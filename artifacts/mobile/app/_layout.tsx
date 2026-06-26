@@ -30,6 +30,13 @@ function RootLayoutNav() {
       <Stack.Screen name="(user-tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(gym-tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="nutrition" options={{ headerShown: false, animation: "slide_from_bottom" }} />
+      <Stack.Screen name="challenges" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="rewards" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="subscription" options={{ headerShown: false, animation: "slide_from_bottom" }} />
+      <Stack.Screen name="workout" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="referral" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right" }} />
     </Stack>
   );
 }

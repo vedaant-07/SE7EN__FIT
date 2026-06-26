@@ -1,231 +1,181 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView,
+  StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { api } from "@/src/services/apiClient";
 
-type Status = "all" | "active" | "inactive" | "expired";
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#141414";
+const BORDER = "#262626";
 
-const MEMBERS = [
-  { id: "1", name: "Arjun Sharma", phone: "+91 98765 43210", plan: "6-Month", status: "active" as const, due: "15 Aug 2025", paid: 8000 },
-  { id: "2", name: "Priya Verma", phone: "+91 87654 32109", plan: "Annual", status: "active" as const, due: "1 Jan 2026", paid: 14000 },
-  { id: "3", name: "Rohan Singh", phone: "+91 76543 21098", plan: "Monthly", status: "expired" as const, due: "20 Jun 2025", paid: 1500 },
-  { id: "4", name: "Neha Joshi", phone: "+91 65432 10987", plan: "3-Month", status: "active" as const, due: "10 Sep 2025", paid: 4500 },
-  { id: "5", name: "Vikram Patel", phone: "+91 54321 09876", plan: "Monthly", status: "inactive" as const, due: "5 Jul 2025", paid: 1500 },
-  { id: "6", name: "Asha Nair", phone: "+91 43210 98765", plan: "Annual", status: "active" as const, due: "20 Dec 2025", paid: 14000 },
-  { id: "7", name: "Deepak Kumar", phone: "+91 32109 87654", plan: "6-Month", status: "active" as const, due: "8 Oct 2025", paid: 8000 },
-];
+interface Member {
+  id: string; name: string; phone: string; email: string; plan: string;
+  status: string; fee: number; joined: string; expires: string; attendance_this_month: number;
+}
 
-const STATUS_COLOR: Record<string, string> = {
-  active: "#22C55E",
-  inactive: "#6B7280",
-  expired: "#EF4444",
-};
+const STATUS_COLOR: Record<string, string> = { active: G, pending: "#fb923c", expired: "#f87171" };
 
 export default function MembersScreen() {
   const insets = useSafeAreaInsets();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Status>("all");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const filtered = MEMBERS.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search);
-    const matchFilter = filter === "all" || m.status === filter;
-    return matchSearch && matchFilter;
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  async function load(isRefresh = false) {
+    try {
+      if (!isRefresh) setLoading(true);
+      const res = await api.get<{ members: Member[] }>("/api/gym/members");
+      setMembers(res.members ?? []);
+    } catch { setMembers([]); }
+    finally { setLoading(false); setRefreshing(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = members.filter(m => {
+    const matchStatus = filter === "all" || m.status === filter;
+    const matchQuery = !query || m.name.toLowerCase().includes(query.toLowerCase()) || m.phone.includes(query);
+    return matchStatus && matchQuery;
   });
 
+  const counts = {
+    all: members.length,
+    active: members.filter(m => m.status === "active").length,
+    pending: members.filter(m => m.status === "pending").length,
+    expired: members.filter(m => m.status === "expired").length,
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.topSection, { paddingTop: topPad + 16 }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Members</Text>
-          <Pressable
-            style={styles.addBtn}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-          >
-            <Feather name="plus" size={18} color="#000" />
-            <Text style={styles.addBtnText}>Add</Text>
-          </Pressable>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchWrap}>
-          <Feather name="search" size={16} color="#6B7280" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search members..."
-            placeholderTextColor="#4B5563"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Feather name="x" size={16} color="#6B7280" />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {(["all", "active", "inactive", "expired"] as Status[]).map(f => (
-            <Pressable
-              key={f}
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
-              onPress={() => setFilter(f)}
-            >
-              {f !== "all" && (
-                <View style={[styles.filterDot, { backgroundColor: STATUS_COLOR[f] }]} />
-              )}
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-                {f === "all" ? ` (${MEMBERS.length})` : ` (${MEMBERS.filter(m => m.status === f).length})`}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: BG }}
+      contentContainerStyle={[s.container, { paddingTop: topPad + 16, paddingBottom: 100 }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={G} />}
+    >
+      <View style={s.header}>
+        <Text style={s.title}>Members</Text>
+        <Pressable style={s.addBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+          <Feather name="user-plus" size={14} color="#000" />
+          <Text style={s.addBtnText}>Add Member</Text>
+        </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.list, { paddingBottom: (Platform.OS === "web" ? 34 : 0) + 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Feather name="users" size={40} color="#3F3F3F" />
-            <Text style={styles.emptyText}>No members found</Text>
-          </View>
-        ) : filtered.map(m => (
+      <View style={s.searchBar}>
+        <Feather name="search" size={15} color="#6B7280" />
+        <TextInput
+          style={s.searchInput}
+          placeholder="Search by name or phone..."
+          placeholderTextColor="#4B5563"
+          value={query}
+          onChangeText={setQuery}
+        />
+        {query.length > 0 && (
+          <Pressable onPress={() => setQuery("")}>
+            <Feather name="x" size={15} color="#4B5563" />
+          </Pressable>
+        )}
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
+        {(["all", "active", "pending", "expired"] as const).map(f => (
           <Pressable
-            key={m.id}
-            style={({ pressed }) => [styles.memberCard, pressed && { opacity: 0.85 }]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            key={f}
+            style={[s.filterBtn, filter === f && s.filterBtnActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFilter(f); }}
           >
-            <View style={styles.memberAvatar}>
-              <Text style={styles.memberAvatarText}>{m.name[0]}</Text>
-            </View>
-            <View style={styles.memberBody}>
-              <View style={styles.memberTop}>
-                <Text style={styles.memberName}>{m.name}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[m.status] + "20" }]}>
-                  <Text style={[styles.statusText, { color: STATUS_COLOR[m.status] }]}>{m.status}</Text>
-                </View>
-              </View>
-              <Text style={styles.memberPhone}>{m.phone}</Text>
-              <View style={styles.memberBottom}>
-                <View style={styles.planTag}>
-                  <Feather name="calendar" size={10} color="#6B7280" />
-                  <Text style={styles.planText}>{m.plan}</Text>
-                </View>
-                <Text style={styles.dueText}>Due: {m.due}</Text>
-                <Text style={styles.paidText}>₹{m.paid.toLocaleString()}</Text>
-              </View>
-            </View>
-            <View style={styles.actionBtns}>
-              <Pressable style={styles.iconBtn} onPress={() => {}}>
-                <Feather name="message-circle" size={14} color="#22C55E" />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={() => {}}>
-                <Feather name="more-vertical" size={14} color="#6B7280" />
-              </Pressable>
-            </View>
+            <Text style={[s.filterText, filter === f && s.filterTextActive]}>
+              {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
-    </View>
+
+      {loading ? (
+        <ActivityIndicator color={G} style={{ marginTop: 40 }} />
+      ) : (
+        <View style={s.list}>
+          {filtered.map((m) => (
+            <Pressable
+              key={m.id}
+              style={({ pressed }) => [s.memberCard, pressed && { opacity: 0.85 }]}
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            >
+              <View style={s.memberTop}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{m.name[0]}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.memberName}>{m.name}</Text>
+                  <Text style={s.memberPhone}>{m.phone}</Text>
+                </View>
+                <View style={[s.statusBadge, { backgroundColor: (STATUS_COLOR[m.status] ?? "#6B7280") + "20" }]}>
+                  <Text style={[s.statusText, { color: STATUS_COLOR[m.status] ?? "#6B7280" }]}>
+                    {m.status.charAt(0).toUpperCase() + m.status.slice(1)}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.memberBottom}>
+                <View style={s.memberInfo}>
+                  <Feather name="credit-card" size={11} color="#6B7280" />
+                  <Text style={s.memberInfoText}>{m.plan} · ₹{m.fee.toLocaleString()}</Text>
+                </View>
+                <View style={s.memberInfo}>
+                  <Feather name="calendar" size={11} color="#6B7280" />
+                  <Text style={s.memberInfoText}>Expires {m.expires}</Text>
+                </View>
+                <View style={s.memberInfo}>
+                  <Feather name="activity" size={11} color={G} />
+                  <Text style={[s.memberInfoText, { color: G }]}>{m.attendance_this_month} visits this month</Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+          {filtered.length === 0 && (
+            <View style={s.empty}>
+              <Feather name="users" size={40} color="#374151" />
+              <Text style={s.emptyText}>No members found</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
-  topSection: { paddingHorizontal: 20, gap: 12 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: "800" as const, color: "#FFF" },
-  addBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#22C55E",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  addBtnText: { fontSize: 14, fontWeight: "700" as const, color: "#000" },
-  searchWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  searchInput: { flex: 1, color: "#FFF", fontSize: 14, padding: 0 },
-  filters: { gap: 8, paddingBottom: 4 },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "#141414",
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  filterChipActive: { backgroundColor: "#22C55E", borderColor: "#22C55E" },
-  filterDot: { width: 6, height: 6, borderRadius: 3 },
-  filterText: { fontSize: 12, color: "#6B7280", fontWeight: "600" as const },
-  filterTextActive: { color: "#000" },
-  list: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
-  empty: { alignItems: "center", gap: 12, paddingTop: 60 },
-  emptyText: { fontSize: 15, color: "#6B7280" },
-  memberCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  memberAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#22C55E20",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  memberAvatarText: { fontSize: 18, fontWeight: "700" as const, color: "#22C55E" },
-  memberBody: { flex: 1, gap: 4 },
-  memberTop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  memberName: { flex: 1, fontSize: 14, fontWeight: "700" as const, color: "#FFF" },
-  statusBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  statusText: { fontSize: 10, fontWeight: "700" as const, textTransform: "capitalize" as const },
-  memberPhone: { fontSize: 12, color: "#6B7280" },
-  memberBottom: { flexDirection: "row", alignItems: "center", gap: 10 },
-  planTag: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#1A1A1A", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  planText: { fontSize: 10, color: "#9CA3AF" },
-  dueText: { fontSize: 11, color: "#6B7280", flex: 1 },
-  paidText: { fontSize: 12, color: "#22C55E", fontWeight: "700" as const },
-  actionBtns: { gap: 6 },
-  iconBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+const s = StyleSheet.create({
+  container: { paddingHorizontal: 20, gap: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  title: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: G, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
+  addBtnText: { fontSize: 13, fontWeight: "700", color: "#000" },
+  searchBar: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: CARD, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: BORDER },
+  searchInput: { flex: 1, fontSize: 14, color: "#fff", padding: 0 },
+  filters: { gap: 8 },
+  filterBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
+  filterBtnActive: { backgroundColor: G, borderColor: G },
+  filterText: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
+  filterTextActive: { color: "#000", fontWeight: "700" },
+  list: { gap: 10 },
+  memberCard: { backgroundColor: CARD, borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: BORDER },
+  memberTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: G + "20", alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 18, fontWeight: "700", color: G },
+  memberName: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  memberPhone: { fontSize: 12, color: "#6B7280", marginTop: 1 },
+  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  memberBottom: { gap: 6 },
+  memberInfo: { flexDirection: "row", alignItems: "center", gap: 7 },
+  memberInfoText: { fontSize: 12, color: "#6B7280" },
+  empty: { alignItems: "center", gap: 14, paddingTop: 60 },
+  emptyText: { color: "#6B7280", fontSize: 14 },
 });

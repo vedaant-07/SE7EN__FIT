@@ -1,241 +1,209 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  ActivityIndicator, Platform, RefreshControl,
+  ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { api } from "@/src/services/apiClient";
 
-type Period = "weekly" | "monthly" | "yearly";
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#141414";
+const BORDER = "#262626";
 
-const MONTHLY_DATA = [68000, 82000, 75000, 95000, 88000, 110000, 102000, 118000, 124500];
-const MONTH_LABELS = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"];
-
-const TRANSACTIONS = [
-  { id: "1", name: "Priya Verma", plan: "Annual Renewal", amount: 14000, date: "Today", type: "in" },
-  { id: "2", name: "Arjun Sharma", plan: "6-Month", amount: 8000, date: "Yesterday", type: "in" },
-  { id: "3", name: "Equipment Maintenance", plan: "Expense", amount: 3500, date: "2d ago", type: "out" },
-  { id: "4", name: "Neha Joshi", plan: "3-Month", amount: 4500, date: "3d ago", type: "in" },
-  { id: "5", name: "Electricity Bill", plan: "Expense", amount: 5200, date: "5d ago", type: "out" },
-  { id: "6", name: "Deepak Kumar", plan: "6-Month", amount: 8000, date: "1w ago", type: "in" },
-  { id: "7", name: "Asha Nair", plan: "Annual", amount: 14000, date: "1w ago", type: "in" },
-];
-
-const PLAN_BREAKDOWN = [
-  { plan: "Annual", members: 45, revenue: 63000, color: "#22C55E" },
-  { plan: "6-Month", members: 78, revenue: 62400, color: "#3B82F6" },
-  { plan: "3-Month", members: 92, revenue: 41400, color: "#F97316" },
-  { plan: "Monthly", members: 33, revenue: 49500, color: "#8B5CF6" },
-];
+interface EarningsData {
+  this_month: number; last_month: number; growth_pct: number; net_profit: number;
+  monthly: Array<{ month: string; revenue: number; members: number }>;
+  by_plan: Array<{ plan: string; count: number; revenue: number }>;
+  expenses: Record<string, number>;
+}
 
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
-  const [period, setPeriod] = useState<Period>("monthly");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const totalRevenue = 124500;
-  const totalExpenses = 28400;
-  const netProfit = totalRevenue - totalExpenses;
+  const [data, setData] = useState<EarningsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const maxRevenue = Math.max(...MONTHLY_DATA);
+  async function load(isRefresh = false) {
+    try {
+      if (!isRefresh) setLoading(true);
+      const res = await api.get<EarningsData>("/api/gym/earnings");
+      setData(res);
+    } catch { setData(null); }
+    finally { setLoading(false); setRefreshing(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const maxRev = data ? Math.max(...data.monthly.map(m => m.revenue)) : 1;
+  const totalExpenses = data ? Object.values(data.expenses).reduce((a, b) => a + b, 0) : 0;
 
   return (
     <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.container, { paddingTop: topPad + 16, paddingBottom: (Platform.OS === "web" ? 34 : 0) + 100 }]}
+      style={{ flex: 1, backgroundColor: BG }}
+      contentContainerStyle={[s.container, { paddingTop: topPad + 16, paddingBottom: 100 }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={G} />}
     >
-      <Text style={styles.title}>Earnings</Text>
+      <Text style={s.title}>Earnings</Text>
 
-      {/* Period Toggle */}
-      <View style={styles.periodToggle}>
-        {(["weekly", "monthly", "yearly"] as Period[]).map(p => (
-          <Pressable
-            key={p}
-            style={[styles.periodBtn, period === p && styles.periodBtnActive]}
-            onPress={() => setPeriod(p)}
-          >
-            <Text style={[styles.periodText, period === p && styles.periodTextActive]}>
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Summary Cards */}
-      <View style={styles.summaryGrid}>
-        <View style={[styles.summaryCard, { borderColor: "#22C55E30" }]}>
-          <View style={styles.summaryTop}>
-            <Feather name="arrow-down-left" size={14} color="#22C55E" />
-            <Text style={styles.summaryLabel}>Revenue</Text>
-          </View>
-          <Text style={styles.summaryValue}>₹{totalRevenue.toLocaleString()}</Text>
-          <Text style={styles.summaryChange}>+18% vs last month</Text>
-        </View>
-        <View style={[styles.summaryCard, { borderColor: "#EF444430" }]}>
-          <View style={styles.summaryTop}>
-            <Feather name="arrow-up-right" size={14} color="#EF4444" />
-            <Text style={styles.summaryLabel}>Expenses</Text>
-          </View>
-          <Text style={[styles.summaryValue, { color: "#EF4444" }]}>₹{totalExpenses.toLocaleString()}</Text>
-          <Text style={styles.summaryChange}>-5% vs last month</Text>
-        </View>
-      </View>
-
-      <View style={[styles.summaryCard, styles.netCard]}>
-        <View style={styles.netRow}>
-          <View>
-            <Text style={styles.netLabel}>Net Profit</Text>
-            <Text style={styles.netValue}>₹{netProfit.toLocaleString()}</Text>
-          </View>
-          <View style={styles.netPct}>
-            <Feather name="trending-up" size={20} color="#22C55E" />
-            <Text style={styles.netPctText}>{Math.round(netProfit / totalRevenue * 100)}%</Text>
-          </View>
-        </View>
-        <View style={styles.netBar}>
-          <View style={[styles.netFill, { width: `${netProfit / totalRevenue * 100}%` }]} />
-        </View>
-        <Text style={styles.netSub}>Profit margin</Text>
-      </View>
-
-      {/* Revenue Chart */}
-      <View style={styles.chartCard}>
-        <Text style={styles.sectionTitle}>Revenue Trend</Text>
-        <View style={styles.chart}>
-          {MONTHLY_DATA.map((v, i) => {
-            const pct = v / maxRevenue;
-            return (
-              <View key={i} style={styles.chartCol}>
-                <Text style={styles.chartVal}>
-                  {v >= 100000 ? `${(v / 100000).toFixed(1)}L` : `${(v / 1000).toFixed(0)}K`}
-                </Text>
-                <View style={styles.chartBarWrap}>
-                  <View style={[styles.chartBar, { height: `${pct * 100}%`, backgroundColor: i === MONTHLY_DATA.length - 1 ? "#22C55E" : "#22C55E60" }]} />
-                </View>
-                <Text style={styles.chartLabel}>{MONTH_LABELS[i]}</Text>
+      {loading || !data ? (
+        <ActivityIndicator color={G} style={{ marginTop: 40 }} />
+      ) : (
+        <>
+          {/* Hero Revenue */}
+          <View style={s.heroCard}>
+            <View style={s.heroLeft}>
+              <Text style={s.heroLabel}>This Month</Text>
+              <Text style={s.heroAmount}>₹{(data.this_month / 100000).toFixed(2)}L</Text>
+              <View style={s.growthBadge}>
+                <Feather name="trending-up" size={11} color={G} />
+                <Text style={s.growthText}>+{data.growth_pct}% vs last month</Text>
               </View>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Plan Breakdown */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Revenue by Plan</Text>
-        {PLAN_BREAKDOWN.map(p => (
-          <View key={p.plan} style={styles.planRow}>
-            <View style={[styles.planDot, { backgroundColor: p.color }]} />
-            <Text style={styles.planName}>{p.plan}</Text>
-            <Text style={styles.planMembers}>{p.members} members</Text>
-            <Text style={[styles.planRevenue, { color: p.color }]}>₹{p.revenue.toLocaleString()}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Transactions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Transactions</Text>
-        <View style={styles.txCard}>
-          {TRANSACTIONS.map((tx, i) => (
-            <View key={tx.id} style={[styles.txRow, i < TRANSACTIONS.length - 1 && styles.txRowBorder]}>
-              <View style={[styles.txIcon, { backgroundColor: tx.type === "in" ? "#22C55E15" : "#EF444415" }]}>
-                <Feather
-                  name={tx.type === "in" ? "arrow-down-left" : "arrow-up-right"}
-                  size={14}
-                  color={tx.type === "in" ? "#22C55E" : "#EF4444"}
-                />
-              </View>
-              <View style={styles.txInfo}>
-                <Text style={styles.txName}>{tx.name}</Text>
-                <Text style={styles.txPlan}>{tx.plan} · {tx.date}</Text>
-              </View>
-              <Text style={[styles.txAmount, { color: tx.type === "in" ? "#22C55E" : "#EF4444" }]}>
-                {tx.type === "in" ? "+" : "-"}₹{tx.amount.toLocaleString()}
-              </Text>
             </View>
-          ))}
-        </View>
-      </View>
+            <View style={s.heroRight}>
+              <View style={s.miniStat}>
+                <Text style={s.miniLabel}>Last Month</Text>
+                <Text style={s.miniVal}>₹{(data.last_month / 100000).toFixed(1)}L</Text>
+              </View>
+              <View style={s.miniStat}>
+                <Text style={s.miniLabel}>Net Profit</Text>
+                <Text style={[s.miniVal, { color: G }]}>₹{(data.net_profit / 1000).toFixed(0)}K</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Revenue Chart */}
+          <View style={s.chartCard}>
+            <Text style={s.sectionTitle}>6-Month Revenue</Text>
+            <View style={s.chart}>
+              {data.monthly.map((m) => (
+                <View key={m.month} style={s.barCol}>
+                  <Text style={s.barAmount}>₹{(m.revenue / 1000).toFixed(0)}K</Text>
+                  <View style={s.barTrack}>
+                    <View style={[s.barFill, { height: `${(m.revenue / maxRev) * 100}%` as `${number}%` }]} />
+                  </View>
+                  <Text style={s.barMonth}>{m.month}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* By Plan */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Revenue by Plan</Text>
+            <View style={s.planList}>
+              {data.by_plan.map((p, i) => {
+                const totalRev = data.by_plan.reduce((sum, x) => sum + x.revenue, 0);
+                const pct = Math.round((p.revenue / totalRev) * 100);
+                return (
+                  <View key={p.plan} style={[s.planRow, i < data.by_plan.length - 1 && { borderBottomWidth: 1, borderBottomColor: "#1a1a1a" }]}>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <View style={s.planRowHeader}>
+                        <Text style={s.planName}>{p.plan}</Text>
+                        <Text style={s.planRevenue}>₹{(p.revenue / 100000).toFixed(2)}L</Text>
+                      </View>
+                      <View style={s.planBar}>
+                        <View style={[s.planBarFill, { width: `${pct}%` as `${number}%` }]} />
+                      </View>
+                      <View style={s.planMeta}>
+                        <Text style={s.planCount}>{p.count} members</Text>
+                        <Text style={s.planPct}>{pct}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Expenses */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Monthly Expenses</Text>
+            <View style={s.expenseList}>
+              {Object.entries(data.expenses).map(([key, val], i, arr) => (
+                <View key={key} style={[s.expRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: "#1a1a1a" }]}>
+                  <Text style={s.expLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                  <Text style={s.expVal}>₹{(val as number).toLocaleString()}</Text>
+                </View>
+              ))}
+              <View style={[s.expRow, s.expTotal]}>
+                <Text style={s.expTotalLabel}>Total Expenses</Text>
+                <Text style={s.expTotalVal}>₹{totalExpenses.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Profit Summary */}
+          <View style={s.profitCard}>
+            <View style={s.profitRow}>
+              <Text style={s.profitLabel}>Revenue</Text>
+              <Text style={s.profitRevenue}>₹{data.this_month.toLocaleString()}</Text>
+            </View>
+            <View style={s.profitRow}>
+              <Text style={s.profitLabel}>Expenses</Text>
+              <Text style={s.profitExpense}>-₹{totalExpenses.toLocaleString()}</Text>
+            </View>
+            <View style={s.profitDivider} />
+            <View style={s.profitRow}>
+              <Text style={s.profitLabelBold}>Net Profit</Text>
+              <Text style={s.profitNet}>₹{data.net_profit.toLocaleString()}</Text>
+            </View>
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#0A0A0A" },
+const s = StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 20 },
-  title: { fontSize: 26, fontWeight: "800" as const, color: "#FFF" },
-  periodToggle: {
-    flexDirection: "row",
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    padding: 4,
-  },
-  periodBtn: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 9 },
-  periodBtnActive: { backgroundColor: "#22C55E" },
-  periodText: { fontSize: 13, color: "#6B7280", fontWeight: "600" as const },
-  periodTextActive: { color: "#000" },
-  summaryGrid: { flexDirection: "row", gap: 12 },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    padding: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  summaryTop: { flexDirection: "row", alignItems: "center", gap: 6 },
-  summaryLabel: { fontSize: 12, color: "#6B7280" },
-  summaryValue: { fontSize: 20, fontWeight: "800" as const, color: "#22C55E" },
-  summaryChange: { fontSize: 11, color: "#6B7280" },
-  netCard: {
-    flex: undefined,
-    gap: 10,
-    borderColor: "#22C55E20",
-  },
-  netRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  netLabel: { fontSize: 13, color: "#6B7280" },
-  netValue: { fontSize: 26, fontWeight: "800" as const, color: "#FFF", marginTop: 2 },
-  netPct: { flexDirection: "row", alignItems: "center", gap: 6 },
-  netPctText: { fontSize: 22, fontWeight: "800" as const, color: "#22C55E" },
-  netBar: { height: 6, backgroundColor: "#262626", borderRadius: 3 },
-  netFill: { height: 6, backgroundColor: "#22C55E", borderRadius: 3 },
-  netSub: { fontSize: 11, color: "#6B7280" },
-  chartCard: { backgroundColor: "#141414", borderRadius: 16, padding: 16, gap: 16, borderWidth: 1, borderColor: "#262626" },
-  chart: { flexDirection: "row", alignItems: "flex-end", height: 100, gap: 4 },
-  chartCol: { flex: 1, alignItems: "center", height: "100%", gap: 4 },
-  chartVal: { fontSize: 7, color: "#6B7280" },
-  chartBarWrap: { flex: 1, width: "80%", justifyContent: "flex-end" },
-  chartBar: { width: "100%", borderRadius: 3, minHeight: 6 },
-  chartLabel: { fontSize: 8, color: "#6B7280" },
+  title: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  heroCard: { backgroundColor: CARD, borderRadius: 18, padding: 18, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: G + "30" },
+  heroLeft: { flex: 1, gap: 6 },
+  heroLabel: { fontSize: 12, color: "#6B7280" },
+  heroAmount: { fontSize: 36, fontWeight: "800", color: "#fff" },
+  growthBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: G + "20", borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
+  growthText: { fontSize: 11, color: G, fontWeight: "700" },
+  heroRight: { gap: 14, alignItems: "flex-end" },
+  miniStat: { alignItems: "flex-end", gap: 2 },
+  miniLabel: { fontSize: 10, color: "#6B7280" },
+  miniVal: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  chartCard: { backgroundColor: CARD, borderRadius: 16, padding: 16, gap: 16, borderWidth: 1, borderColor: BORDER },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  chart: { flexDirection: "row", alignItems: "flex-end", height: 100, gap: 6 },
+  barCol: { flex: 1, alignItems: "center", gap: 4, height: "100%" },
+  barAmount: { fontSize: 8, color: "#6B7280", textAlign: "center" },
+  barTrack: { flex: 1, width: "100%", justifyContent: "flex-end", backgroundColor: "#1a1a1a", borderRadius: 4 },
+  barFill: { width: "100%", backgroundColor: G, borderRadius: 4, minHeight: 4 },
+  barMonth: { fontSize: 10, color: "#6B7280" },
   section: { gap: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700" as const, color: "#FFF" },
-  planRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#141414",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  planDot: { width: 10, height: 10, borderRadius: 5 },
-  planName: { flex: 1, fontSize: 13, color: "#FFF", fontWeight: "600" as const },
-  planMembers: { fontSize: 12, color: "#6B7280" },
-  planRevenue: { fontSize: 14, fontWeight: "700" as const },
-  txCard: { backgroundColor: "#141414", borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "#262626" },
-  txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  txRowBorder: { borderBottomWidth: 1, borderBottomColor: "#1F1F1F" },
-  txIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  txInfo: { flex: 1, gap: 2 },
-  txName: { fontSize: 13, fontWeight: "600" as const, color: "#FFF" },
-  txPlan: { fontSize: 11, color: "#6B7280" },
-  txAmount: { fontSize: 14, fontWeight: "700" as const },
+  planList: { backgroundColor: CARD, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: BORDER },
+  planRow: { padding: 14 },
+  planRowHeader: { flexDirection: "row", justifyContent: "space-between" },
+  planName: { fontSize: 13, fontWeight: "600", color: "#fff", flex: 1 },
+  planRevenue: { fontSize: 13, fontWeight: "700", color: G },
+  planBar: { height: 5, backgroundColor: "#1a1a1a", borderRadius: 3 },
+  planBarFill: { height: 5, backgroundColor: G + "80", borderRadius: 3 },
+  planMeta: { flexDirection: "row", justifyContent: "space-between" },
+  planCount: { fontSize: 11, color: "#6B7280" },
+  planPct: { fontSize: 11, color: "#6B7280" },
+  expenseList: { backgroundColor: CARD, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: BORDER },
+  expRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12 },
+  expLabel: { fontSize: 13, color: "#9CA3AF" },
+  expVal: { fontSize: 13, color: "#fff", fontWeight: "600" },
+  expTotal: { backgroundColor: "#1a1a1a" },
+  expTotalLabel: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  expTotalVal: { fontSize: 13, fontWeight: "700", color: "#f87171" },
+  profitCard: { backgroundColor: "#071a0e", borderRadius: 14, padding: 16, gap: 10, borderWidth: 1, borderColor: G + "30" },
+  profitRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  profitLabel: { fontSize: 13, color: "#9CA3AF" },
+  profitRevenue: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  profitExpense: { fontSize: 15, fontWeight: "700", color: "#f87171" },
+  profitDivider: { height: 1, backgroundColor: BORDER },
+  profitLabelBold: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  profitNet: { fontSize: 22, fontWeight: "800", color: G },
 });

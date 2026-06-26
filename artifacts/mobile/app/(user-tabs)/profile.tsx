@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert, Platform, Pressable, RefreshControl,
@@ -25,17 +26,19 @@ const BADGES = [
 ];
 
 const MENU_ITEMS = [
-  { id: "subscription", label: "Subscription", icon: "zap" as const, value: "Free", color: "#fbbf24" },
-  { id: "referral", label: "Refer & Earn", icon: "gift" as const, value: "Invite Friends", color: G },
-  { id: "notifications", label: "Notifications", icon: "bell" as const, value: "", color: "#9ca3af" },
-  { id: "health", label: "Connected Health", icon: "heart" as const, value: "Not connected", color: "#f87171" },
-  { id: "settings", label: "Settings", icon: "settings" as const, value: "", color: "#9ca3af" },
-  { id: "privacy", label: "Privacy Policy", icon: "shield" as const, value: "", color: "#9ca3af" },
-  { id: "support", label: "Help & Support", icon: "help-circle" as const, value: "", color: "#9ca3af" },
+  { id: "subscription", label: "Subscription", icon: "zap" as const, value: "Free Plan", color: "#fbbf24", route: "/subscription" },
+  { id: "referral", label: "Refer & Earn", icon: "gift" as const, value: "Invite Friends", color: G, route: "/referral" },
+  { id: "rewards", label: "Rewards & Badges", icon: "award" as const, value: "1,850 pts", color: "#a78bfa", route: "/rewards" },
+  { id: "challenges", label: "Challenges", icon: "trending-up" as const, value: "2 active", color: "#38bdf8", route: "/challenges" },
+  { id: "nutrition", label: "Nutrition Diary", icon: "coffee" as const, value: "", color: "#fb923c", route: "/nutrition" },
+  { id: "settings", label: "Settings", icon: "settings" as const, value: "", color: "#9ca3af", route: "/settings" },
+  { id: "privacy", label: "Privacy Policy", icon: "shield" as const, value: "", color: "#9ca3af", route: null },
+  { id: "support", label: "Help & Support", icon: "help-circle" as const, value: "", color: "#9ca3af", route: null },
 ];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user: authUser, logout, refreshUser } = useAuth();
   const [profile, setProfile] = useState<User | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -174,7 +177,10 @@ export default function ProfileScreen() {
           <Pressable
             key={item.id}
             style={[s.menuRow, i < MENU_ITEMS.length - 1 && { borderBottomWidth: 1, borderBottomColor: "#111" }]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (item.route) router.push(item.route as never);
+            }}
           >
             <View style={[s.menuIcon, { backgroundColor: item.color + "15" }]}>
               <Feather name={item.icon} size={16} color={item.color} />
@@ -196,7 +202,7 @@ export default function ProfileScreen() {
             <Text style={s.upgradeTitle}>Unlock SE7ENFIT PRIME</Text>
           </View>
           <Text style={s.upgradeSub}>Unlimited AI coach, advanced workout plans, food scan & more</Text>
-          <Pressable style={s.upgradeBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+          <Pressable style={s.upgradeBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push("/subscription" as never); }}>
             <Text style={s.upgradeBtnText}>Upgrade to PRIME →</Text>
           </Pressable>
         </View>
