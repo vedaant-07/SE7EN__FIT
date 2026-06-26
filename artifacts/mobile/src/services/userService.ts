@@ -57,3 +57,25 @@ export async function getCurrentSubscription(): Promise<object | null> {
     return null;
   }
 }
+
+export interface OnboardingPayload {
+  gender?: string;
+  age_group?: string;
+  height?: number;
+  weight?: number;
+  goal?: string;
+  activity_level?: string;
+  diet_preference?: string;
+  workout_location?: string;
+  onboarding_completed?: boolean;
+}
+
+import type { User } from "../types";
+
+export async function completeOnboarding(payload: OnboardingPayload): Promise<User> {
+  const res = await api.put<{ user: User }>("/api/user/profile", {
+    ...payload,
+    onboarding_completed: true,
+  });
+  return res.user || (res as unknown as User);
+}

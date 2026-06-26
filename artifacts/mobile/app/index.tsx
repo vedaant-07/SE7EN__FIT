@@ -8,7 +8,7 @@ export default function RootIndex() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#0A0A0A", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: "#050505", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color="#20c55d" size="large" />
       </View>
     );
@@ -20,6 +20,10 @@ export default function RootIndex() {
 
   if (user.role === "gym_owner") {
     return <Redirect href="/(gym-tabs)" />;
+  }
+
+  if (!user.onboarding_completed) {
+    return <Redirect href="/(onboarding)" />;
   }
 
   return <Redirect href="/(user-tabs)" />;
