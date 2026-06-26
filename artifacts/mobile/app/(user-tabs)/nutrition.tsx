@@ -1,300 +1,223 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  ActivityIndicator, FlatList, KeyboardAvoidingView, Platform,
+  Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/context/AuthContext";
+import { chatWithAI } from "@/src/services/aiService";
 
-const MEALS = [
-  {
-    id: "1", name: "Breakfast", time: "8:00 AM",
-    items: ["Oatmeal with berries", "2 Boiled Eggs", "Green Tea"],
-    cal: 420, protein: 28, carbs: 52, fat: 12,
-  },
-  {
-    id: "2", name: "Lunch", time: "1:00 PM",
-    items: ["Grilled Chicken Salad", "Brown Rice", "Mixed Veggies"],
-    cal: 580, protein: 48, carbs: 62, fat: 14,
-  },
-  {
-    id: "3", name: "Snack", time: "4:00 PM",
-    items: ["Protein Shake", "Banana", "Almonds (20g)"],
-    cal: 280, protein: 24, carbs: 32, fat: 8,
-  },
-  {
-    id: "4", name: "Dinner", time: "7:30 PM",
-    items: ["Salmon Fillet", "Sweet Potato", "Steamed Broccoli"],
-    cal: 560, protein: 44, carbs: 58, fat: 18,
-  },
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#0d0d0d";
+const BORDER = "#1e1e1e";
+
+interface Message {
+  id: string;
+  role: "user" | "ai";
+  text: string;
+  ts: number;
+}
+
+const SUGGESTED = [
+  "Create a fat loss workout for me",
+  "Give me a high protein Indian diet plan",
+  "How do I do squats safely?",
+  "Analyze my progress",
+  "What should I train today?",
+  "I missed gym for 3 days, what now?",
 ];
 
-const WATER_GOAL = 3.0;
-
-export default function NutritionScreen() {
+export default function AICoachScreen() {
   const insets = useSafeAreaInsets();
-  const [water, setWater] = useState(2.1);
-  const [expandedMeal, setExpandedMeal] = useState<string | null>("1");
-
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const flatRef = useRef<FlatList>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const totalCal = MEALS.reduce((s, m) => s + m.cal, 0);
-  const totalProtein = MEALS.reduce((s, m) => s + m.protein, 0);
-  const totalCarbs = MEALS.reduce((s, m) => s + m.carbs, 0);
-  const totalFat = MEALS.reduce((s, m) => s + m.fat, 0);
-
-  const calGoal = 2200;
-  const calPct = Math.min(totalCal / calGoal, 1);
-
-  function addWater(amount: number) {
+  async function send(text: string) {
+    if (!text.trim() || loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setWater(w => Math.min(parseFloat((w + amount).toFixed(1)), WATER_GOAL + 1));
+    const userMsg: Message = { id: Date.now().toString(), role: "user", text: text.trim(), ts: Date.now() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const ctx = {
+        user_goal: user?.goal,
+        diet_preference: user?.diet_preference,
+        age: user?.age,
+        height: user?.height,
+        weight: user?.weight,
+      };
+      const reply = await chatWithAI(text.trim(), ctx);
+      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "ai", text: reply, ts: Date.now() };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (e: unknown) {
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(), role: "ai",
+        text: e instanceof Error ? e.message : "I'm having trouble connecting right now. Please try again.",
+        ts: Date.now(),
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+    }
   }
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.container, { paddingTop: topPad + 16, paddingBottom: (Platform.OS === "web" ? 34 : 0) + 100 }]}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: BG }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Nutrition</Text>
-        <Pressable style={styles.scanBtn} onPress={() => {}}>
-          <Feather name="camera" size={18} color="#22C55E" />
-          <Text style={styles.scanBtnText}>Scan Food</Text>
-        </Pressable>
-      </View>
-
-      {/* Calorie Ring */}
-      <View style={styles.calorieCard}>
-        <View style={styles.calorieRing}>
-          <Text style={styles.calorieNum}>{totalCal}</Text>
-          <Text style={styles.calorieLabel}>of {calGoal}</Text>
-          <Text style={styles.calorieUnit}>kcal</Text>
-        </View>
-        <View style={styles.macroGrid}>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: "#EF4444" }]} />
-            <Text style={styles.macroVal}>{totalProtein}g</Text>
-            <Text style={styles.macroName}>Protein</Text>
-            <View style={styles.macroBar}>
-              <View style={[styles.macroFill, { backgroundColor: "#EF4444", width: `${Math.min(totalProtein / 160 * 100, 100)}%` }]} />
-            </View>
-          </View>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: "#F97316" }]} />
-            <Text style={styles.macroVal}>{totalCarbs}g</Text>
-            <Text style={styles.macroName}>Carbs</Text>
-            <View style={styles.macroBar}>
-              <View style={[styles.macroFill, { backgroundColor: "#F97316", width: `${Math.min(totalCarbs / 250 * 100, 100)}%` }]} />
-            </View>
-          </View>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: "#3B82F6" }]} />
-            <Text style={styles.macroVal}>{totalFat}g</Text>
-            <Text style={styles.macroName}>Fat</Text>
-            <View style={styles.macroBar}>
-              <View style={[styles.macroFill, { backgroundColor: "#3B82F6", width: `${Math.min(totalFat / 70 * 100, 100)}%` }]} />
+      {/* Header */}
+      <View style={[s.header, { paddingTop: topPad + 16 }]}>
+        <View style={s.headerLeft}>
+          <View style={s.aiAvatar}><Feather name="cpu" size={20} color={G} /></View>
+          <View>
+            <Text style={s.title}>AI Coach</Text>
+            <View style={s.onlineRow}>
+              <View style={s.onlineDot} />
+              <Text style={s.onlineText}>Powered by Gemini</Text>
             </View>
           </View>
         </View>
+        <View style={s.primeTag}><Text style={s.primeText}>PRIME</Text></View>
       </View>
 
-      {/* Calorie Progress Bar */}
-      <View style={styles.calProgressWrap}>
-        <View style={styles.calProgressBg}>
-          <View style={[styles.calProgressFill, { width: `${calPct * 100}%` }]} />
-        </View>
-        <Text style={styles.calProgressText}>{calGoal - totalCal} kcal remaining</Text>
-      </View>
-
-      {/* Water Tracker */}
-      <View style={styles.waterCard}>
-        <View style={styles.waterHeader}>
-          <View style={styles.waterLeft}>
-            <Feather name="droplet" size={18} color="#06B6D4" />
-            <Text style={styles.waterTitle}>Water Intake</Text>
-          </View>
-          <Text style={styles.waterAmt}>{water.toFixed(1)} / {WATER_GOAL} L</Text>
-        </View>
-        <View style={styles.waterBar}>
-          <View style={[styles.waterFill, { width: `${Math.min(water / WATER_GOAL * 100, 100)}%` }]} />
-        </View>
-        <View style={styles.waterBtns}>
-          {[0.1, 0.25, 0.5].map(amt => (
-            <Pressable key={amt} style={styles.waterAddBtn} onPress={() => addWater(amt)}>
-              <Text style={styles.waterAddBtnText}>+{amt}L</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* Meals */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Meals</Text>
-        {MEALS.map(meal => (
-          <Pressable
-            key={meal.id}
-            style={styles.mealCard}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setExpandedMeal(expandedMeal === meal.id ? null : meal.id);
-            }}
-          >
-            <View style={styles.mealHeader}>
-              <View>
-                <Text style={styles.mealName}>{meal.name}</Text>
-                <Text style={styles.mealTime}>{meal.time}</Text>
-              </View>
-              <View style={styles.mealRight}>
-                <Text style={styles.mealCal}>{meal.cal} kcal</Text>
-                <Feather name={expandedMeal === meal.id ? "chevron-up" : "chevron-down"} size={16} color="#6B7280" />
-              </View>
+      {/* Messages */}
+      <FlatList
+        ref={flatRef}
+        data={messages}
+        keyExtractor={m => m.id}
+        contentContainerStyle={[s.chatList, { paddingBottom: 20 }]}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={s.emptyChat}>
+            <View style={s.emptyChatIcon}><Feather name="cpu" size={36} color={G} /></View>
+            <Text style={s.emptyChatTitle}>Your AI Fitness Coach</Text>
+            <Text style={s.emptyChatSub}>
+              Ask me anything about workouts, diet, supplements, injury prevention, or your progress.
+              I'll give you personalized advice powered by Gemini AI.
+            </Text>
+            <View style={s.suggestedGrid}>
+              {SUGGESTED.map(q => (
+                <Pressable key={q} style={s.suggChip} onPress={() => send(q)}>
+                  <Text style={s.suggText}>{q}</Text>
+                </Pressable>
+              ))}
             </View>
-            {expandedMeal === meal.id && (
-              <View style={styles.mealItems}>
-                {meal.items.map((item, i) => (
-                  <View key={i} style={styles.mealItem}>
-                    <View style={styles.mealItemDot} />
-                    <Text style={styles.mealItemText}>{item}</Text>
-                  </View>
-                ))}
-                <View style={styles.mealMacros}>
-                  <Text style={styles.mealMacro}><Text style={{ color: "#EF4444" }}>P</Text> {meal.protein}g</Text>
-                  <Text style={styles.mealMacro}><Text style={{ color: "#F97316" }}>C</Text> {meal.carbs}g</Text>
-                  <Text style={styles.mealMacro}><Text style={{ color: "#3B82F6" }}>F</Text> {meal.fat}g</Text>
-                </View>
-              </View>
+          </View>
+        }
+        renderItem={({ item: m }) => (
+          <View style={[s.bubble, m.role === "user" ? s.bubbleUser : s.bubbleAI]}>
+            {m.role === "ai" && (
+              <View style={s.aiBubbleAvatar}><Feather name="cpu" size={14} color={G} /></View>
             )}
-          </Pressable>
-        ))}
+            <View style={[s.bubbleInner, m.role === "user" ? s.bubbleInnerUser : s.bubbleInnerAI]}>
+              <Text style={[s.bubbleText, m.role === "user" ? s.bubbleTextUser : s.bubbleTextAI]}>
+                {m.text}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
 
-        <Pressable style={styles.addMealBtn} onPress={() => {}}>
-          <Feather name="plus" size={18} color="#22C55E" />
-          <Text style={styles.addMealBtnText}>Add a meal</Text>
+      {loading && (
+        <View style={s.typingRow}>
+          <View style={s.aiBubbleAvatar}><Feather name="cpu" size={14} color={G} /></View>
+          <View style={s.typingBubble}>
+            <ActivityIndicator size="small" color={G} />
+            <Text style={s.typingText}>AI is thinking…</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Suggested (when chat active) */}
+      {messages.length > 0 && !loading && (
+        <View>
+          <FlatList
+            horizontal
+            data={SUGGESTED.slice(0, 3)}
+            keyExtractor={q => q}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 8 }}
+            renderItem={({ item: q }) => (
+              <Pressable style={s.suggChipSmall} onPress={() => send(q)}>
+                <Text style={s.suggTextSmall} numberOfLines={1}>{q}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+      )}
+
+      {/* Input */}
+      <View style={[s.inputBar, { paddingBottom: insets.bottom + 10 }]}>
+        <TextInput
+          style={s.inputField}
+          placeholder="Ask your AI Coach anything…"
+          placeholderTextColor="#4b5563"
+          value={input}
+          onChangeText={setInput}
+          multiline
+          maxLength={500}
+          returnKeyType="send"
+          onSubmitEditing={() => send(input)}
+        />
+        <Pressable
+          style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnDisabled]}
+          onPress={() => send(input)}
+          disabled={!input.trim() || loading}
+        >
+          <Feather name="send" size={18} color={!input.trim() || loading ? "#374151" : "#000"} />
         </Pressable>
       </View>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#0A0A0A" },
-  container: { paddingHorizontal: 20, gap: 20 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { fontSize: 26, fontWeight: "800" as const, color: "#FFF" },
-  scanBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#22C55E15",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  scanBtnText: { fontSize: 13, color: "#22C55E", fontWeight: "600" as const },
-
-  calorieCard: {
-    flexDirection: "row",
-    backgroundColor: "#141414",
-    borderRadius: 16,
-    padding: 18,
-    gap: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  calorieRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 6,
-    borderColor: "#22C55E",
-    backgroundColor: "#22C55E15",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calorieNum: { fontSize: 20, fontWeight: "800" as const, color: "#22C55E" },
-  calorieLabel: { fontSize: 9, color: "#6B7280" },
-  calorieUnit: { fontSize: 11, color: "#9CA3AF" },
-  macroGrid: { flex: 1, gap: 10 },
-  macroItem: { gap: 3 },
-  macroDot: { width: 6, height: 6, borderRadius: 3 },
-  macroVal: { fontSize: 15, fontWeight: "700" as const, color: "#FFF" },
-  macroName: { fontSize: 11, color: "#6B7280" },
-  macroBar: { height: 4, backgroundColor: "#262626", borderRadius: 2 },
-  macroFill: { height: 4, borderRadius: 2 },
-
-  calProgressWrap: { gap: 6 },
-  calProgressBg: { height: 8, backgroundColor: "#262626", borderRadius: 4 },
-  calProgressFill: { height: 8, backgroundColor: "#22C55E", borderRadius: 4 },
-  calProgressText: { fontSize: 12, color: "#6B7280", textAlign: "right" },
-
-  waterCard: {
-    backgroundColor: "#141414",
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#06B6D420",
-  },
-  waterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  waterLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  waterTitle: { fontSize: 15, fontWeight: "700" as const, color: "#FFF" },
-  waterAmt: { fontSize: 15, fontWeight: "700" as const, color: "#06B6D4" },
-  waterBar: { height: 8, backgroundColor: "#262626", borderRadius: 4 },
-  waterFill: { height: 8, backgroundColor: "#06B6D4", borderRadius: 4 },
-  waterBtns: { flexDirection: "row", gap: 10 },
-  waterAddBtn: {
-    flex: 1,
-    backgroundColor: "#06B6D415",
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#06B6D420",
-  },
-  waterAddBtnText: { fontSize: 13, color: "#06B6D4", fontWeight: "700" as const },
-
-  section: { gap: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700" as const, color: "#FFF" },
-
-  mealCard: {
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  mealHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  mealName: { fontSize: 15, fontWeight: "700" as const, color: "#FFF" },
-  mealTime: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-  mealRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  mealCal: { fontSize: 14, color: "#22C55E", fontWeight: "600" as const },
-  mealItems: { gap: 8 },
-  mealItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  mealItemDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#22C55E" },
-  mealItemText: { fontSize: 13, color: "#D1D5DB" },
-  mealMacros: { flexDirection: "row", gap: 16, marginTop: 4 },
-  mealMacro: { fontSize: 12, color: "#9CA3AF" },
-
-  addMealBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: "#22C55E30",
-    borderStyle: "dashed" as const,
-  },
-  addMealBtnText: { fontSize: 14, color: "#22C55E", fontWeight: "600" as const },
+const s = StyleSheet.create({
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  aiAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: G + "20", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: G + "40" },
+  title: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: G },
+  onlineText: { fontSize: 11, color: "#6b7280" },
+  primeTag: { backgroundColor: G + "20", borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
+  primeText: { fontSize: 10, fontWeight: "700", color: G },
+  chatList: { paddingHorizontal: 16, paddingTop: 16, gap: 12 },
+  emptyChat: { flex: 1, alignItems: "center", paddingTop: 40, gap: 16, paddingHorizontal: 4 },
+  emptyChatIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: G + "15", alignItems: "center", justifyContent: "center" },
+  emptyChatTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
+  emptyChatSub: { fontSize: 14, color: "#9ca3af", textAlign: "center", lineHeight: 21 },
+  suggestedGrid: { width: "100%", gap: 8 },
+  suggChip: { backgroundColor: CARD, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: BORDER },
+  suggText: { fontSize: 13, color: "#d1d5db" },
+  bubble: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  bubbleUser: { justifyContent: "flex-end" },
+  bubbleAI: { justifyContent: "flex-start" },
+  aiBubbleAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: G + "15", alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  bubbleInner: { maxWidth: "80%", borderRadius: 16, padding: 13 },
+  bubbleInnerUser: { backgroundColor: G, borderBottomRightRadius: 4 },
+  bubbleInnerAI: { backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderBottomLeftRadius: 4 },
+  bubbleText: { fontSize: 14, lineHeight: 21 },
+  bubbleTextUser: { color: "#000", fontWeight: "500" },
+  bubbleTextAI: { color: "#e5e7eb" },
+  typingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  typingBubble: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: CARD, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: BORDER },
+  typingText: { fontSize: 12, color: "#6b7280" },
+  suggChipSmall: { backgroundColor: CARD, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: BORDER, maxWidth: 180 },
+  suggTextSmall: { fontSize: 12, color: "#9ca3af" },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: BORDER, backgroundColor: BG },
+  inputField: { flex: 1, backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 14, paddingVertical: 12, color: "#fff", fontSize: 14, maxHeight: 120 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: G, alignItems: "center", justifyContent: "center" },
+  sendBtnDisabled: { backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
 });

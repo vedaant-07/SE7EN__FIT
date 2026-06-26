@@ -1,223 +1,235 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  ActivityIndicator, Platform, Pressable, RefreshControl,
+  ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getWorkouts, getExercises } from "@/src/services/workoutService";
+import type { WorkoutPlan, Exercise } from "@/src/types";
 
-type Category = "All" | "Strength" | "Cardio" | "HIIT" | "Yoga" | "Flexibility";
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#0d0d0d";
+const BORDER = "#1e1e1e";
 
-const CATEGORIES: Category[] = ["All", "Strength", "Cardio", "HIIT", "Yoga", "Flexibility"];
+type Tab = "plans" | "exercises";
+type FilterCat = "All" | "Strength" | "Cardio" | "HIIT" | "Yoga" | "Flexibility";
+const CATS: FilterCat[] = ["All", "Strength", "Cardio", "HIIT", "Yoga", "Flexibility"];
 
-const WORKOUTS = [
-  { id: "1", name: "Full Body Blast", category: "Strength", duration: "45 min", level: "Intermediate", calories: 380, sets: 5, icon: "zap" as const, color: "#22C55E" },
-  { id: "2", name: "Morning HIIT", category: "HIIT", duration: "30 min", level: "Advanced", calories: 450, sets: 8, icon: "activity" as const, color: "#EF4444" },
-  { id: "3", name: "Core Power", category: "Strength", duration: "25 min", level: "Beginner", calories: 200, sets: 4, icon: "target" as const, color: "#3B82F6" },
-  { id: "4", name: "Cardio Burn", category: "Cardio", duration: "40 min", level: "Intermediate", calories: 360, sets: 0, icon: "wind" as const, color: "#F97316" },
-  { id: "5", name: "Yoga Flow", category: "Yoga", duration: "60 min", level: "Beginner", calories: 150, sets: 0, icon: "sun" as const, color: "#8B5CF6" },
-  { id: "6", name: "Stretch & Recover", category: "Flexibility", duration: "20 min", level: "Beginner", calories: 80, sets: 0, icon: "feather" as const, color: "#06B6D4" },
-  { id: "7", name: "Upper Body Push", category: "Strength", duration: "35 min", level: "Intermediate", calories: 280, sets: 6, icon: "trending-up" as const, color: "#22C55E" },
-  { id: "8", name: "Sprint Intervals", category: "HIIT", duration: "20 min", level: "Advanced", calories: 320, sets: 10, icon: "alert-triangle" as const, color: "#EF4444" },
+const FALLBACK_WORKOUTS: WorkoutPlan[] = [
+  { id: "1", name: "Full Body Blast", goal: "Strength", level: "Intermediate", days_per_week: 3 },
+  { id: "2", name: "Morning HIIT", goal: "Fat Loss", level: "Advanced", days_per_week: 5 },
+  { id: "3", name: "Core Power", goal: "Strength", level: "Beginner", days_per_week: 4 },
+  { id: "4", name: "Cardio Burn", goal: "Endurance", level: "Intermediate", days_per_week: 3 },
 ];
 
-export default function WorkoutsScreen() {
+export default function WorkoutScreen() {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState<Category>("All");
-  const [saved, setSaved] = useState<Set<string>>(new Set());
-
+  const [tab, setTab] = useState<Tab>("plans");
+  const [activeFilter, setActiveFilter] = useState<FilterCat>("All");
+  const [workouts, setWorkouts] = useState<WorkoutPlan[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activePlan, setActivePlan] = useState<string | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const filtered = activeCategory === "All" ? WORKOUTS : WORKOUTS.filter(w => w.category === activeCategory);
-
-  function toggleSave(id: string) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSaved(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  async function load(isRefresh = false) {
+    try {
+      if (!isRefresh) setLoading(true);
+      setError(null);
+      const [w, e] = await Promise.allSettled([getWorkouts(), getExercises()]);
+      if (w.status === "fulfilled" && w.value.length > 0) setWorkouts(w.value);
+      else setWorkouts(FALLBACK_WORKOUTS);
+      if (e.status === "fulfilled") setExercises(e.value);
+    } catch {
+      setWorkouts(FALLBACK_WORKOUTS);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
+  useEffect(() => { load(); }, []);
+
+  const LEVEL_COLOR: Record<string, string> = { Beginner: "#34d399", Intermediate: "#fbbf24", Advanced: "#f87171" };
+
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        <Text style={styles.title}>Workouts</Text>
-        <View style={styles.headerBadge}>
-          <Feather name="cpu" size={12} color="#22C55E" />
-          <Text style={styles.headerBadgeText}>AI Powered</Text>
+      <View style={[s.header, { paddingTop: topPad + 16 }]}>
+        <View>
+          <Text style={s.title}>Workout</Text>
+          <Text style={s.subtitle}>Your fitness plans & exercises</Text>
+        </View>
+        <View style={s.aiBadge}>
+          <Feather name="cpu" size={12} color={G} />
+          <Text style={s.aiBadgeText}>AI Powered</Text>
         </View>
       </View>
 
-      {/* AI Recommendation Banner */}
-      <View style={styles.aiBanner}>
-        <Feather name="zap" size={16} color="#22C55E" />
-        <Text style={styles.aiBannerText}>
-          AI recommends <Text style={styles.aiBannerHighlight}>Full Body Blast</Text> for you today
-        </Text>
-      </View>
-
-      {/* Category Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categories}
-      >
-        {CATEGORIES.map(cat => (
-          <Pressable
-            key={cat}
-            style={[styles.catChip, activeCategory === cat && styles.catChipActive]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setActiveCategory(cat);
-            }}
-          >
-            <Text style={[styles.catChipText, activeCategory === cat && styles.catChipTextActive]}>
-              {cat}
+      {/* Tab Switcher */}
+      <View style={s.tabRow}>
+        {(["plans", "exercises"] as Tab[]).map(t => (
+          <Pressable key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
+            <Text style={[s.tabBtnText, tab === t && s.tabBtnTextActive]}>
+              {t === "plans" ? "My Plans" : "Exercise Library"}
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
-      {/* Workout List */}
-      <ScrollView
-        contentContainerStyle={[styles.list, { paddingBottom: (Platform.OS === "web" ? 34 : 0) + 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {filtered.map(w => (
-          <Pressable
-            key={w.id}
-            style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-          >
-            <View style={[styles.cardLeft, { backgroundColor: w.color + "15" }]}>
-              <Feather name={w.icon} size={26} color={w.color} />
-            </View>
-            <View style={styles.cardBody}>
-              <View style={styles.cardTopRow}>
-                <Text style={styles.cardName}>{w.name}</Text>
-                <Pressable onPress={() => toggleSave(w.id)}>
-                  <Feather
-                    name={saved.has(w.id) ? "bookmark" : "bookmark"}
-                    size={18}
-                    color={saved.has(w.id) ? "#22C55E" : "#6B7280"}
-                  />
+      {loading ? (
+        <View style={s.center}>
+          <ActivityIndicator color={G} size="large" />
+          <Text style={s.loadText}>Loading workouts…</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[s.list, { paddingBottom: 100 + (Platform.OS === "web" ? 34 : 0) }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={G} />
+          }
+        >
+          {tab === "plans" && (
+            <>
+              {/* AI Banner */}
+              <View style={s.aiBanner}>
+                <Feather name="zap" size={14} color={G} />
+                <Text style={s.aiBannerText}>
+                  Ask AI Coach to generate a personalized plan
+                </Text>
+                <Pressable style={s.aiBannerBtn}>
+                  <Text style={s.aiBannerBtnText}>Generate</Text>
                 </Pressable>
               </View>
-              <View style={styles.cardMeta}>
-                <View style={[styles.levelBadge, { backgroundColor: w.color + "20" }]}>
-                  <Text style={[styles.levelText, { color: w.color }]}>{w.level}</Text>
+
+              {workouts.length === 0 ? (
+                <View style={s.emptyCard}>
+                  <Feather name="clipboard" size={36} color="#374151" />
+                  <Text style={s.emptyTitle}>No workout plans yet</Text>
+                  <Text style={s.emptyText}>Your assigned and AI-generated workout plans will appear here.</Text>
                 </View>
-                <Text style={styles.metaText}>{w.duration}</Text>
-                <Text style={styles.metaDot}>·</Text>
-                <Text style={styles.metaText}>{w.calories} cal</Text>
-                {w.sets > 0 && (
-                  <>
-                    <Text style={styles.metaDot}>·</Text>
-                    <Text style={styles.metaText}>{w.sets} sets</Text>
-                  </>
-                )}
-              </View>
-            </View>
-            <Pressable
-              style={styles.startBtn}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-            >
-              <Feather name="play" size={14} color="#000" />
-            </Pressable>
-          </Pressable>
-        ))}
-      </ScrollView>
+              ) : workouts.map(w => (
+                <Pressable
+                  key={w.id}
+                  style={({ pressed }) => [s.card, pressed && { opacity: 0.9 }, activePlan === w.id && s.cardActive]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setActivePlan(activePlan === w.id ? null : w.id);
+                  }}
+                >
+                  <View style={s.cardLeft}>
+                    <View style={s.cardIcon}><Feather name="zap" size={22} color={G} /></View>
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Text style={s.cardName}>{w.name}</Text>
+                      <View style={s.cardMeta}>
+                        {w.level && (
+                          <View style={[s.levelBadge, { backgroundColor: (LEVEL_COLOR[w.level] ?? G) + "20" }]}>
+                            <Text style={[s.levelText, { color: LEVEL_COLOR[w.level] ?? G }]}>{w.level}</Text>
+                          </View>
+                        )}
+                        {w.goal && <Text style={s.metaText}>{w.goal}</Text>}
+                        {w.days_per_week && <Text style={s.metaText}>{w.days_per_week}d/week</Text>}
+                      </View>
+                    </View>
+                  </View>
+                  <Pressable style={s.playBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+                    <Feather name="play" size={14} color="#000" />
+                  </Pressable>
+                </Pressable>
+              ))}
+            </>
+          )}
+
+          {tab === "exercises" && (
+            <>
+              {/* Filter Row */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                {CATS.map(cat => (
+                  <Pressable
+                    key={cat}
+                    style={[s.chip, activeFilter === cat && s.chipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setActiveFilter(cat);
+                    }}
+                  >
+                    <Text style={[s.chipText, activeFilter === cat && s.chipTextActive]}>{cat}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              {exercises.length === 0 ? (
+                <View style={s.emptyCard}>
+                  <Feather name="database" size={36} color="#374151" />
+                  <Text style={s.emptyTitle}>Exercise library loading</Text>
+                  <Text style={s.emptyText}>Exercises will appear once the backend is connected.</Text>
+                </View>
+              ) : exercises.map(ex => (
+                <View key={ex.id} style={s.exCard}>
+                  <View style={s.exIcon}><Feather name="activity" size={20} color={G} /></View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={s.cardName}>{ex.name}</Text>
+                    <View style={s.cardMeta}>
+                      {ex.muscle_group && <Text style={s.metaText}>{ex.muscle_group}</Text>}
+                      {ex.difficulty && <Text style={s.metaText}>{ex.difficulty}</Text>}
+                      {ex.equipment && <Text style={s.metaText}>{ex.equipment}</Text>}
+                    </View>
+                  </View>
+                  {ex.video_url && (
+                    <View style={s.videoBadge}><Feather name="play-circle" size={14} color={G} /></View>
+                  )}
+                </View>
+              ))}
+            </>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  title: { fontSize: 26, fontWeight: "800" as const, color: "#FFF" },
-  headerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#22C55E15",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  headerBadgeText: { fontSize: 11, color: "#22C55E", fontWeight: "700" as const },
-  aiBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: "#0F1F0F",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#22C55E20",
-  },
-  aiBannerText: { fontSize: 13, color: "#9CA3AF", flex: 1 },
-  aiBannerHighlight: { color: "#22C55E", fontWeight: "700" as const },
-  categories: { paddingHorizontal: 20, paddingBottom: 16, gap: 8, flexDirection: "row" },
-  catChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#141414",
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  catChipActive: { backgroundColor: "#22C55E", borderColor: "#22C55E" },
-  catChipText: { fontSize: 13, color: "#6B7280", fontWeight: "600" as const },
-  catChipTextActive: { color: "#000" },
+const s = StyleSheet.create({
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingBottom: 14 },
+  title: { fontSize: 26, fontWeight: "800", color: "#fff" },
+  subtitle: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  aiBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: G + "15", borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
+  aiBadgeText: { fontSize: 11, color: G, fontWeight: "700" },
+  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 16, backgroundColor: CARD, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: BORDER },
+  tabBtn: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 9 },
+  tabBtnActive: { backgroundColor: G },
+  tabBtnText: { fontSize: 13, color: "#6b7280", fontWeight: "600" },
+  tabBtnTextActive: { color: "#000" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingTop: 60 },
+  loadText: { color: "#6b7280", fontSize: 14 },
   list: { paddingHorizontal: 20, gap: 12 },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#141414",
-    borderRadius: 16,
-    padding: 14,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  cardLeft: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardBody: { flex: 1, gap: 6 },
-  cardTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardName: { fontSize: 15, fontWeight: "700" as const, color: "#FFF", flex: 1 },
+  aiBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#071a0e", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: G + "20" },
+  aiBannerText: { fontSize: 13, color: "#9ca3af", flex: 1 },
+  aiBannerBtn: { backgroundColor: G, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  aiBannerBtnText: { fontSize: 11, fontWeight: "700", color: "#000" },
+  emptyCard: { backgroundColor: CARD, borderRadius: 16, padding: 32, alignItems: "center", gap: 10, borderWidth: 1, borderColor: BORDER },
+  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  emptyText: { fontSize: 13, color: "#6b7280", textAlign: "center" },
+  card: { flexDirection: "row", alignItems: "center", backgroundColor: CARD, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: BORDER },
+  cardActive: { borderColor: G },
+  cardLeft: { flexDirection: "row", alignItems: "center", flex: 1, gap: 12 },
+  cardIcon: { width: 50, height: 50, borderRadius: 14, backgroundColor: G + "15", alignItems: "center", justifyContent: "center" },
+  cardName: { fontSize: 15, fontWeight: "700", color: "#fff" },
   cardMeta: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   levelBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  levelText: { fontSize: 10, fontWeight: "700" as const },
-  metaText: { fontSize: 12, color: "#6B7280" },
-  metaDot: { fontSize: 12, color: "#3F3F3F" },
-  startBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#22C55E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  levelText: { fontSize: 10, fontWeight: "700" },
+  metaText: { fontSize: 12, color: "#6b7280" },
+  playBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: G, alignItems: "center", justifyContent: "center" },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
+  chipActive: { backgroundColor: G, borderColor: G },
+  chipText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
+  chipTextActive: { color: "#000" },
+  exCard: { flexDirection: "row", alignItems: "center", backgroundColor: CARD, borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: BORDER },
+  exIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: G + "15", alignItems: "center", justifyContent: "center" },
+  videoBadge: { padding: 4 },
 });

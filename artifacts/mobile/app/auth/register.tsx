@@ -1,245 +1,243 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator, Alert, Platform, Pressable,
+  StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#0d0d0d";
+const BORDER = "#1e1e1e";
+
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { register, pendingRole } = useAuth();
+  const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const role = pendingRole ?? "user";
+  const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const passRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  function handlePhoneChange(text: string) {
+    const digits = text.replace(/\D/g, "").slice(0, 10);
+    setPhone(digits);
+  }
 
   async function handleRegister() {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert("Required", "Please fill in all fields.");
-      return;
-    }
-    if (password !== confirmPass) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters.");
-      return;
-    }
+    if (!name.trim()) { Alert.alert("Required", "Please enter your full name."); return; }
+    if (!email.trim()) { Alert.alert("Required", "Please enter your email."); return; }
+    if (phone.length !== 10) { Alert.alert("Invalid", "Phone number must be exactly 10 digits."); return; }
+    if (password.length < 6) { Alert.alert("Weak Password", "Password must be at least 6 characters."); return; }
+    if (password !== confirmPass) { Alert.alert("Mismatch", "Passwords do not match."); return; }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     try {
-      await register(email.trim(), password, name.trim(), role);
-    } catch {
-      Alert.alert("Error", "Registration failed. Please try again.");
+      await register({ name: name.trim(), email: email.trim().toLowerCase(), phone, password });
+    } catch (e: unknown) {
+      Alert.alert("Registration Failed", e instanceof Error ? e.message : "Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-
   return (
     <KeyboardAwareScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.container, { paddingTop: topPad + 16, paddingBottom: insets.bottom + 32 }]}
+      style={{ flex: 1, backgroundColor: BG }}
+      contentContainerStyle={[s.container, { paddingTop: topPad + 16, paddingBottom: insets.bottom + 40 }]}
       keyboardShouldPersistTaps="handled"
       bottomOffset={24}
     >
-      <Pressable style={styles.back} onPress={() => router.back()}>
-        <Feather name="arrow-left" size={22} color="#FFF" />
-        <Text style={styles.backText}>Back</Text>
+      <Pressable style={s.back} onPress={() => router.back()}>
+        <Feather name="arrow-left" size={22} color="#fff" />
+        <Text style={s.backText}>Back</Text>
       </Pressable>
 
-      <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <Feather name="user-plus" size={28} color="#FFF" />
-        </View>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Sign up to get started</Text>
+      <View style={s.header}>
+        <View style={s.iconWrap}><Feather name="user-plus" size={28} color="#fff" /></View>
+        <Text style={s.title}>Create Account</Text>
+        <Text style={s.subtitle}>Join SE7ENFIT — India's #1 AI Fitness App</Text>
       </View>
 
-      <View style={styles.card}>
-        <Pressable style={styles.googleBtn} onPress={() => {}}>
-          <Text style={styles.googleG}>G</Text>
-          <Text style={styles.googleText}>Continue with Google</Text>
+      <View style={s.card}>
+        <Pressable style={s.googleBtn} onPress={() => Alert.alert("Google Login", "Configure EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to enable Google sign-up.")}>
+          <Text style={s.googleG}>G</Text>
+          <Text style={s.googleText}>Continue with Google</Text>
         </Pressable>
 
-        <View style={styles.divider}>
-          <View style={styles.divLine} />
-          <Text style={styles.divText}>OR</Text>
-          <View style={styles.divLine} />
+        <View style={s.divRow}>
+          <View style={s.divLine} /><Text style={s.divText}>OR</Text><View style={s.divLine} />
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputWrap}>
-            <Feather name="user" size={16} color="#6B7280" style={styles.inputIcon} />
+        {[
+          {
+            label: "Full Name", icon: "user" as const, value: name, set: setName,
+            placeholder: "Your full name", autoCapitalize: "words" as const, keyboardType: "default" as const,
+            ref: undefined as React.RefObject<TextInput> | undefined, next: emailRef,
+          },
+          {
+            label: "Email", icon: "mail" as const, value: email, set: setEmail,
+            placeholder: "you@example.com", autoCapitalize: "none" as const, keyboardType: "email-address" as const,
+            ref: emailRef, next: phoneRef,
+          },
+        ].map((f) => (
+          <View key={f.label} style={s.field}>
+            <Text style={s.label}>{f.label}</Text>
+            <View style={s.inputWrap}>
+              <Feather name={f.icon} size={16} color="#6b7280" style={s.icon} />
+              <TextInput
+                ref={f.ref}
+                style={s.input}
+                placeholder={f.placeholder}
+                placeholderTextColor="#4b5563"
+                autoCapitalize={f.autoCapitalize}
+                keyboardType={f.keyboardType}
+                autoCorrect={false}
+                returnKeyType="next"
+                value={f.value}
+                onChangeText={f.set}
+                onSubmitEditing={() => f.next?.current?.focus()}
+              />
+            </View>
+          </View>
+        ))}
+
+        <View style={s.field}>
+          <Text style={s.label}>Phone <Text style={s.labelHint}>(10 digits)</Text></Text>
+          <View style={s.inputWrap}>
+            <Feather name="phone" size={16} color="#6b7280" style={s.icon} />
             <TextInput
-              style={styles.input}
-              placeholder="Your name"
-              placeholderTextColor="#4B5563"
-              autoCapitalize="words"
-              value={name}
-              onChangeText={setName}
+              ref={phoneRef}
+              style={s.input}
+              placeholder="9876543210"
+              placeholderTextColor="#4b5563"
+              keyboardType="number-pad"
+              returnKeyType="next"
+              value={phone}
+              onChangeText={handlePhoneChange}
+              onSubmitEditing={() => passRef.current?.focus()}
+              maxLength={10}
             />
+            {phone.length === 10 && <Feather name="check-circle" size={16} color={G} />}
           </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrap}>
-            <Feather name="mail" size={16} color="#22C55E" style={styles.inputIcon} />
+        <View style={s.field}>
+          <Text style={s.label}>Password</Text>
+          <View style={s.inputWrap}>
+            <Feather name="lock" size={16} color="#6b7280" style={s.icon} />
             <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor="#4B5563"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrap}>
-            <Feather name="lock" size={16} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="••••••••"
-              placeholderTextColor="#4B5563"
+              ref={passRef}
+              style={[s.input, { flex: 1 }]}
+              placeholder="Min 6 characters"
+              placeholderTextColor="#4b5563"
               secureTextEntry={!showPass}
+              returnKeyType="next"
               value={password}
               onChangeText={setPassword}
+              onSubmitEditing={() => confirmRef.current?.focus()}
             />
-            <Pressable onPress={() => setShowPass(!showPass)}>
-              <Feather name={showPass ? "eye-off" : "eye"} size={16} color="#6B7280" />
+            <Pressable onPress={() => setShowPass(v => !v)} style={s.eye}>
+              <Feather name={showPass ? "eye-off" : "eye"} size={16} color="#6b7280" />
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputWrap}>
-            <Feather name="lock" size={16} color="#6B7280" style={styles.inputIcon} />
+        <View style={s.field}>
+          <Text style={s.label}>Confirm Password</Text>
+          <View style={[s.inputWrap, confirmPass && password !== confirmPass ? s.inputError : {}]}>
+            <Feather name="lock" size={16} color="#6b7280" style={s.icon} />
             <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#4B5563"
+              ref={confirmRef}
+              style={s.input}
+              placeholder="Repeat password"
+              placeholderTextColor="#4b5563"
               secureTextEntry={!showPass}
+              returnKeyType="done"
               value={confirmPass}
               onChangeText={setConfirmPass}
+              onSubmitEditing={handleRegister}
             />
           </View>
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.registerBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [s.regBtn, pressed && { opacity: 0.85 }]}
           onPress={handleRegister}
           disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <Text style={styles.registerBtnText}>Create account</Text>
-          )}
+          {loading
+            ? <ActivityIndicator color="#000" />
+            : <Text style={s.regBtnText}>Create Account</Text>}
         </Pressable>
       </View>
 
-      <Pressable onPress={() => router.push("/auth/login")} style={styles.switchRow}>
-        <Text style={styles.switchText}>
-          Already have an account?{" "}
-          <Text style={styles.switchLink}>Log in</Text>
+      <Pressable onPress={() => router.push("/auth/login")} style={s.switchRow}>
+        <Text style={s.switchText}>
+          Already have an account?{" "}<Text style={s.switchLink}>Log in</Text>
         </Text>
       </Pressable>
     </KeyboardAwareScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#0A0A0A" },
-  container: { paddingHorizontal: 24, gap: 24 },
+const s = StyleSheet.create({
+  container: { paddingHorizontal: 24, gap: 22 },
   back: { flexDirection: "row", alignItems: "center", gap: 6 },
-  backText: { color: "#FFF", fontSize: 16 },
-  header: { alignItems: "center", gap: 8 },
+  backText: { color: "#fff", fontSize: 16 },
+  header: { alignItems: "center", gap: 10 },
   iconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: "#141414",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#262626",
+    width: 64, height: 64, borderRadius: 18,
+    backgroundColor: CARD, borderWidth: 1, borderColor: BORDER,
+    alignItems: "center", justifyContent: "center",
   },
-  title: { fontSize: 24, fontWeight: "800" as const, color: "#FFF" },
-  subtitle: { fontSize: 14, color: "#6B7280" },
-  card: {
-    backgroundColor: "#141414",
-    borderRadius: 20,
-    padding: 24,
-    gap: 20,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
+  title: { fontSize: 26, fontWeight: "800", color: "#fff" },
+  subtitle: { fontSize: 13, color: "#6b7280", textAlign: "center" },
+  card: { backgroundColor: CARD, borderRadius: 20, padding: 24, gap: 18, borderWidth: 1, borderColor: BORDER },
   googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#1F1F1F",
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "#333",
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, backgroundColor: "#111", borderRadius: 12,
+    paddingVertical: 14, borderWidth: 1, borderColor: "#2a2a2a",
   },
-  googleG: { fontSize: 18, fontWeight: "700" as const, color: "#FFF" },
-  googleText: { fontSize: 15, color: "#FFF", fontWeight: "500" as const },
-  divider: { flexDirection: "row", alignItems: "center", gap: 12 },
-  divLine: { flex: 1, height: 1, backgroundColor: "#262626" },
-  divText: { fontSize: 12, color: "#6B7280" },
+  googleG: { fontSize: 18, fontWeight: "700", color: "#fff" },
+  googleText: { fontSize: 15, color: "#fff", fontWeight: "500" },
+  divRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  divLine: { flex: 1, height: 1, backgroundColor: BORDER },
+  divText: { fontSize: 12, color: "#6b7280" },
   field: { gap: 8 },
-  label: { fontSize: 13, color: "#D1D5DB", fontWeight: "600" as const },
+  label: { fontSize: 13, color: "#d1d5db", fontWeight: "600" },
+  labelHint: { color: "#6b7280", fontWeight: "400" },
   inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0A0A0A",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#262626",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: BG, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    paddingHorizontal: 14, paddingVertical: 14,
   },
-  inputIcon: { marginRight: 10 },
-  input: { color: "#FFF", fontSize: 15, flex: 1, padding: 0 },
-  registerBtn: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
+  inputError: { borderColor: "#ef4444" },
+  icon: { marginRight: 10 },
+  input: { color: "#fff", fontSize: 15, flex: 1, padding: 0 },
+  eye: { paddingLeft: 8 },
+  regBtn: {
+    backgroundColor: G, borderRadius: 12,
+    paddingVertical: 16, alignItems: "center", justifyContent: "center",
   },
-  registerBtnText: { fontSize: 16, fontWeight: "700" as const, color: "#000" },
+  regBtnText: { fontSize: 16, fontWeight: "700", color: "#000" },
   switchRow: { alignItems: "center" },
-  switchText: { fontSize: 14, color: "#6B7280" },
-  switchLink: { color: "#22C55E", fontWeight: "600" as const },
+  switchText: { fontSize: 14, color: "#6b7280" },
+  switchLink: { color: G, fontWeight: "600" },
 });

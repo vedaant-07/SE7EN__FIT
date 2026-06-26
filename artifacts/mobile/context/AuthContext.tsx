@@ -1,97 +1,74 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
-
-export type UserRole = "user" | "gym_owner";
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  avatar?: string;
-}
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getToken, setUnauthorizedHandler } from "../src/services/apiClient";
+import * as authService from "../src/services/authService";
+import type { User } from "../src/types";
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<void>;
-  register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: { name: string; email: string; phone: string; password: string }) => Promise<User>;
   logout: () => Promise<void>;
-  setRole: (role: UserRole) => void;
-  pendingRole: UserRole | null;
+  refreshUser: () => Promise<void>;
+  setUser: (u: User | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isLoading: true,
-  login: async () => {},
-  register: async () => {},
-  logout: async () => {},
-  setRole: () => {},
-  pendingRole: null,
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
 
-  useEffect(() => {
-    loadUser();
+  const refreshUser = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) { setUser(null); return; }
+      const me = await authService.getMe();
+      setUser(me);
+    } catch {
+      setUser(null);
+    }
   }, []);
 
-  async function loadUser() {
-    try {
-      const stored = await AsyncStorage.getItem("se7enfit_user");
-      if (stored) {
-        setUser(JSON.parse(stored));
-      }
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    refreshUser().finally(() => setIsLoading(false));
+  }, [refreshUser]);
 
-  async function login(email: string, _password: string, role: UserRole) {
-    const u: User = {
-      id: Date.now().toString(),
-      email,
-      name: email.split("@")[0],
-      role,
-    };
-    await AsyncStorage.setItem("se7enfit_user", JSON.stringify(u));
-    setUser(u);
-  }
+  const handleLogin = useCallback(async (email: string, password: string) => {
+    const res = await authService.login({ email, password });
+    setUser(res.user);
+  }, []);
 
-  async function register(email: string, _password: string, name: string, role: UserRole) {
-    const u: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role,
-    };
-    await AsyncStorage.setItem("se7enfit_user", JSON.stringify(u));
-    setUser(u);
-  }
+  const handleRegister = useCallback(async (data: { name: string; email: string; phone: string; password: string }) => {
+    const res = await authService.register(data);
+    setUser(res.user);
+    return res.user;
+  }, []);
 
-  async function logout() {
-    await AsyncStorage.removeItem("se7enfit_user");
+  const handleLogout = useCallback(async () => {
+    await authService.logout();
     setUser(null);
-    setPendingRole(null);
-  }
-
-  function setRole(role: UserRole) {
-    setPendingRole(role);
-  }
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, setRole, pendingRole }}>
+    <AuthContext.Provider value={{
+      user, isLoading,
+      isAuthenticated: !!user,
+      login: handleLogin,
+      register: handleRegister,
+      logout: handleLogout,
+      refreshUser,
+      setUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

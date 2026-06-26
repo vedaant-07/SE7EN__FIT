@@ -1,0 +1,1613 @@
+Paste this into **Replit AI Agent / Gemini CLI / Cursor** for building the **SE7EN FIT React Native app only**.
+
+You are a senior React Native engineer, Expo engineer, Android engineer, iOS engineer, mobile backend integration engineer, fitness-tech product architect, UI/UX designer, health tracking engineer, and production app developer.
+
+Build a fresh, production-ready React Native / Expo mobile app for SE7EN FIT.
+
+This prompt is for the MOBILE APP ONLY.
+
+Do not build the main website.
+Do not build the gym owner website.
+Do not rebuild the web portal.
+Only build the Android/iOS mobile app, but make it fully connected to the backend, TiDB database, Gemini AI, Google login, health tracking, gym owner assignments, subscriptions, rewards, referrals, and workout video guide system.
+
+====================================================
+PROJECT OVERVIEW
+================
+
+PROJECT NAME:
+SE7EN FIT
+
+APP TYPE:
+React Native / Expo mobile app for Android and iOS.
+
+TARGET USERS:
+
+1. Fitness users
+2. Gym-connected users
+3. Premium users
+4. Gym owners only if mobile owner access is needed as a hidden/secondary mode
+5. Admin access should not be public in the mobile app unless hidden developer/admin mode is implemented
+
+BACKEND:
+Render backend
+
+BACKEND BASE URL:
+[https://se7enfit-original.onrender.com](https://se7enfit-original.onrender.com)
+
+DATABASE:
+TiDB Cloud, MySQL-compatible database, connected through backend.
+
+IMPORTANT:
+Use TiDB as the database behind the backend.
+Do not use Supabase.
+Do not use Firebase as the primary database.
+Do not expose TiDB credentials in the app.
+All sensitive database actions must go through backend APIs.
+
+AI PROVIDER:
+Gemini AI
+
+IMPORTANT GEMINI RULE:
+Do not expose GEMINI_API_KEY in the mobile app.
+The mobile app must call backend AI endpoints.
+The backend must call Gemini securely.
+
+APP PACKAGE:
+Android package name:
+com.se7enfit.app
+
+APP BRAND:
+SE7EN FIT is India’s premium smart fitness ecosystem. It combines AI coaching, workout tracking, diet guidance, health tracking, gym-connected plans, referrals, rewards, subscriptions, challenges, and workout video guides.
+
+====================================================
+STRICT EXECUTION RULES
+======================
+
+1. Build a real mobile app, not a static demo.
+2. Do not answer with only a plan.
+3. Create real React Native / Expo files.
+4. Use production-ready architecture.
+5. Use TypeScript if possible.
+6. Use clean folder structure.
+7. Use reusable components.
+8. Use clean API services.
+9. Use secure token storage.
+10. Use real Google login architecture.
+11. Use real HealthKit / Health Connect readiness.
+12. Use Gemini through backend only.
+13. Use TiDB only through backend.
+14. Do not expose secrets.
+15. Do not hardcode private keys.
+16. Use environment variables.
+17. Phone inputs must accept only 10 digits.
+18. Inputs must not lose focus while typing.
+19. All screens must have loading, error, and empty states.
+20. App must handle backend downtime gracefully.
+21. No blank white screens.
+22. No random UI.
+23. No yellow/lime accent colors.
+24. Use #20c55d as the official neon green.
+25. App must look premium and app-store-ready.
+26. Android and iOS must both be considered from the start.
+27. Document all manual setup required for Google OAuth, HealthKit, Health Connect, Render, TiDB, and EAS builds.
+
+====================================================
+TECH STACK
+==========
+
+Use:
+
+* React Native
+* Expo
+* Expo Router
+* TypeScript
+* React Context or Zustand for state management
+* TanStack Query or clean custom API service for backend data
+* Expo SecureStore for JWT/token storage
+* AsyncStorage only for non-sensitive cached data
+* React Native Reanimated if needed and configured safely
+* React Native Gesture Handler if needed
+* Expo Image Picker for food scan image upload
+* Expo Camera if food scan camera is implemented
+* Expo Notifications if notification permission flow is added
+* HealthKit-compatible library for iOS
+* Health Connect-compatible library for Android
+* EAS Build readiness
+
+If a dependency requires native config, install it properly and document EAS/prebuild steps.
+
+====================================================
+BRAND UI / DESIGN SYSTEM
+========================
+
+The app must look like a premium SE7EN FIT fitness-tech product.
+
+Approved colors:
+
+* Primary neon green: #20c55d
+* Main background: #050505
+* Card background: #0d0d0d
+* Secondary card: #111111
+* Border: #1e1e1e
+* Text white: #ffffff
+* Muted text: #9ca3af
+* Soft green background: rgba(32,197,93,0.12)
+* Green border: rgba(32,197,93,0.35)
+* Error red only for actual errors
+
+Strictly avoid:
+
+* #D4FF00
+* #FACC15
+* yellow
+* lime
+* cheap blue/purple gradients
+* ugly default UI
+
+Visual style:
+
+* premium black/neon fitness-tech UI
+* rounded cards
+* dark glass-like sections
+* modern dashboard
+* strong SE7EN FIT branding
+* bold but readable typography
+* smooth spacing
+* clean forms
+* premium empty states
+* native mobile-first layout
+* no web-looking layout inside app
+* no clutter
+* clean bottom navigation
+* good safe-area handling
+
+Create reusable UI components:
+
+/components/ui:
+
+* AppScreen
+* SafeAreaScreen
+* AppHeader
+* SectionHeader
+* NeonButton
+* GhostButton
+* DangerButton
+* AppInput
+* PasswordInput
+* PhoneInput
+* SearchInput
+* AppCard
+* StatCard
+* MetricCard
+* EmptyState
+* LoadingState
+* ErrorState
+* Avatar
+* ProgressBar
+* ProgressRing
+* Badge
+* StatusBadge
+* BottomSheet if needed
+* AppToast/Snackbar
+* ConfirmDialog
+* VideoCard
+* ExerciseCard
+* WorkoutCard
+* MealCard
+* ChallengeCard
+* RewardCard
+* ReferralCard
+* AIMessageBubble
+* HealthMetricCard
+
+Global UI rules:
+
+* All inputs must be stable and not lose focus.
+* Phone inputs accept digits only and max 10 digits.
+* Forms must scroll above keyboard.
+* Bottom tabs must not cover screen content.
+* Use SafeAreaView properly.
+* iOS and Android spacing must both feel natural.
+* All CTA buttons use #20c55d.
+* Warning/info boxes should use green theme unless truly an error.
+* Toasts auto-close in around 2 seconds.
+
+====================================================
+APP FOLDER STRUCTURE
+====================
+
+Create clean structure:
+
+/app
+/_layout.tsx
+/index.tsx
+/(auth)
+login.tsx
+register.tsx
+welcome.tsx
+forgot-password.tsx
+/(onboarding)
+index.tsx
+goals.tsx
+body-info.tsx
+preferences.tsx
+health-connect.tsx
+/(tabs)
+_layout.tsx
+home.tsx
+workout.tsx
+ai-coach.tsx
+health.tsx
+profile.tsx
+/workouts
+today.tsx
+plans.tsx
+session.tsx
+history.tsx
+/exercises
+index.tsx
+[id].tsx
+video-guide.tsx
+/nutrition
+index.tsx
+add-meal.tsx
+food-scan.tsx
+water.tsx
+ai-diet.tsx
+/progress
+index.tsx
+weight.tsx
+measurements.tsx
+/challenges
+index.tsx
+[id].tsx
+leaderboard.tsx
+/rewards
+index.tsx
+/referrals
+index.tsx
+/subscriptions
+index.tsx
+/settings
+index.tsx
+notifications.tsx
+connected-health.tsx
+privacy.tsx
+/hidden-owner
+index.tsx
+/dev-admin
+index.tsx
+
+/src
+/components
+/constants
+/config
+/services
+/hooks
+/store
+/types
+/utils
+/theme
+/data
+/assets
+
+/services:
+
+* apiClient.ts
+* authService.ts
+* googleAuthService.ts
+* healthService.ts
+* aiService.ts
+* workoutService.ts
+* nutritionService.ts
+* progressService.ts
+* challengeService.ts
+* rewardService.ts
+* referralService.ts
+* subscriptionService.ts
+* notificationService.ts
+* uploadService.ts
+
+/hooks:
+
+* useAuth.ts
+* useSession.ts
+* useHealthSync.ts
+* useWorkoutSession.ts
+* useDailyTip.ts
+* useNetworkStatus.ts
+* useKeyboardAwareForm.ts
+
+/store:
+
+* authStore.ts
+* userStore.ts
+* workoutStore.ts
+* healthStore.ts
+* appSettingsStore.ts
+
+/types:
+
+* auth.ts
+* user.ts
+* workout.ts
+* exercise.ts
+* nutrition.ts
+* health.ts
+* challenge.ts
+* reward.ts
+* referral.ts
+* subscription.ts
+* api.ts
+
+====================================================
+CORE APP FLOW
+=============
+
+Launch workflow:
+
+1. Splash screen
+2. Check secure token
+3. If token exists:
+
+   * call GET /api/auth/me
+   * restore user
+   * route by onboarding status
+4. If no token:
+
+   * show welcome screen
+5. If backend unavailable:
+
+   * show retry/offline state
+6. If token expired:
+
+   * clear token
+   * send to login
+
+Auth flow:
+
+Welcome screen:
+
+* SE7EN FIT logo
+* premium hero text
+* “India’s premium fitness ecosystem”
+* buttons:
+
+  * Continue with Google
+  * Login
+  * Create account
+
+Register flow:
+
+* name
+* email
+* phone exactly 10 digits
+* password
+* confirm password
+* fitness goal
+* terms checkbox
+* create account
+* store JWT
+* send to onboarding
+
+Login flow:
+
+* email
+* password
+* Google login
+* forgot password
+* store JWT
+* send to app
+
+Onboarding flow:
+Step 1: Fitness goal
+
+* fat loss
+* muscle gain
+* strength
+* endurance
+* general fitness
+* transformation
+* gym training
+* home workout
+
+Step 2: Body details
+
+* gender
+* age
+* height
+* weight
+* target weight
+* activity level
+
+Step 3: Preferences
+
+* workout location: gym/home/both
+* equipment access
+* diet preference: veg/non-veg/eggetarian/vegan
+* budget: low/medium/high
+* medical limitations/injuries optional
+
+Step 4: Health connection
+
+* connect Apple Health / Health Connect
+* skip option
+* explain benefits
+
+Step 5: Finish
+
+* create profile
+* call backend
+* go to dashboard
+
+Role routing:
+
+* user → app tabs
+* gym_owner → hidden owner info route or redirect to web portal notice
+* admin → hidden admin/dev screen only if implemented
+* unknown role → safe logout/error
+
+====================================================
+AUTHENTICATION DETAILS
+======================
+
+Auth endpoints:
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/google
+GET /api/auth/me
+POST /api/auth/logout
+
+Registration payload:
+{
+name,
+email,
+phone,
+password,
+role: "user"
+}
+
+Login payload:
+{
+email,
+password,
+role: "user"
+}
+
+Google login payload:
+{
+idToken,
+role: "user"
+}
+
+Expected auth response:
+{
+token,
+user: {
+id,
+name,
+email,
+phone,
+role,
+onboarding_completed,
+avatar_url,
+subscription_status
+}
+}
+
+Store:
+
+* JWT in SecureStore
+* user object in secure/session store
+* non-sensitive cache in AsyncStorage
+
+Security:
+
+* Never store password.
+* Never expose JWT in logs.
+* Mask sensitive error logs.
+* Use Authorization: Bearer <token> for protected APIs.
+* On 401, clear token and route to login.
+
+Google login:
+
+* Use native Google Sign-In for Android/iOS.
+* Android OAuth client ID must be used for Android.
+* iOS OAuth client ID must be used for iOS.
+* Web client ID may be used as serverClientId.
+* Backend verifies Google ID token.
+* App receives backend JWT.
+* Handle cancellation without showing scary error.
+* Handle missing Play Services on Android.
+* Handle network failure.
+
+Required env:
+EXPO_PUBLIC_API_BASE_URL=[https://se7enfit-original.onrender.com](https://se7enfit-original.onrender.com)
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=
+
+Do not expose:
+
+* DATABASE_URL
+* TiDB password
+* JWT_SECRET
+* GEMINI_API_KEY
+* Google client secret
+
+====================================================
+HOME DASHBOARD
+==============
+
+Home tab must show:
+
+Header:
+
+* greeting: “Hey, {name}”
+* today date
+* profile avatar
+* notification icon
+
+Hero card:
+
+* daily progress
+* steps today
+* calories burned
+* active minutes
+* distance
+* sync status
+
+Quick actions:
+
+* Start Workout
+* Ask AI Coach
+* Log Meal
+* Sync Health
+* Video Guide
+
+Today Workout card:
+
+* workout name
+* exercises count
+* estimated duration
+* progress percentage
+* start/resume button
+* empty state if no workout
+
+AI Daily Tip card:
+
+* Gemini-generated daily tip
+* refresh button
+* loading state
+* error fallback
+
+Water card:
+
+* glasses/ml consumed
+* add water buttons
+* daily target
+
+Nutrition card:
+
+* calories consumed
+* protein/carbs/fat summary
+* log meal button
+
+Challenge card:
+
+* active challenge
+* progress
+* leaderboard rank
+
+Rewards/referral card:
+
+* points
+* referral code
+* invite button
+
+Subscription card:
+
+* current plan
+* premium CTA if free
+
+Dashboard must support:
+
+* no backend data
+* no health permissions
+* no workout assigned
+* slow API
+* offline
+* expired token
+
+====================================================
+WORKOUT FEATURES
+================
+
+Workout tab:
+
+* Today workout
+* My plans
+* AI generated plans
+* Gym assigned plans
+* Workout history
+* Exercise library shortcut
+
+Workout plan screen:
+Fields:
+
+* plan name
+* goal
+* level
+* duration weeks
+* days per week
+* exercises
+* assigned by gym/trainer/AI
+* status
+
+Today workout screen:
+
+* warm-up section
+* exercise list
+* each exercise card:
+
+  * name
+  * target muscle
+  * sets
+  * reps
+  * rest
+  * video button
+  * instructions
+  * complete checkbox
+
+Workout session flow:
+
+1. User taps Start Workout.
+2. Session timer starts.
+3. User sees exercises one by one or list mode.
+4. User marks sets complete.
+5. User can open video guide.
+6. User completes workout.
+7. App sends result to backend.
+8. App updates streak/progress/rewards.
+
+Workout complete payload:
+{
+workout_id,
+started_at,
+completed_at,
+duration_minutes,
+exercises_completed,
+calories_estimated,
+notes
+}
+
+Workout history:
+
+* date
+* workout name
+* duration
+* completion
+* calories
+* notes
+
+====================================================
+EXERCISE LIBRARY + VIDEO GUIDE
+==============================
+
+Exercise library must include:
+
+* search
+* filter by muscle group
+* filter by equipment
+* filter by difficulty
+* filter by workout type
+* list of exercise cards
+
+Exercise card:
+
+* thumbnail
+* exercise name
+* muscle group
+* difficulty
+* equipment
+* video available badge
+
+Exercise detail screen:
+
+* video/thumbnail area
+* exercise name
+* primary muscle
+* secondary muscles
+* equipment
+* difficulty
+* instructions
+* form tips
+* common mistakes
+* sets/reps/rest recommendation
+* safety notes
+* add to workout if supported
+
+Video guide:
+
+* support video URL
+* support thumbnail fallback
+* support missing video fallback
+* no crash if URL invalid
+* no autoplay if heavy
+* use lightweight video player
+* loading state
+* video error state
+* admin-managed video data model ready
+
+Exercise model:
+{
+id,
+name,
+slug,
+muscle_group,
+target_muscle,
+secondary_muscles,
+equipment,
+difficulty,
+instructions,
+form_tips,
+common_mistakes,
+video_url,
+thumbnail_url,
+recommended_sets,
+recommended_reps,
+rest_seconds
+}
+
+Important:
+Do not use copyrighted videos.
+Use placeholders or backend/admin-managed URLs.
+
+====================================================
+AI COACH / GEMINI FEATURES
+==========================
+
+AI Coach tab:
+
+* chat interface
+* suggested prompts
+* user message bubble
+* AI response bubble
+* loading dots
+* retry button
+* conversation history if backend supports it
+
+Suggested prompts:
+
+* “Create a fat loss workout for me”
+* “Give me a high protein Indian diet”
+* “Explain how to do squats safely”
+* “Analyze my progress”
+* “What should I train today?”
+* “I missed gym for 3 days, what now?”
+
+AI chat endpoint:
+POST /api/ai/chat
+Payload:
+{
+message,
+context: {
+user_goal,
+age,
+height,
+weight,
+diet_preference,
+injuries,
+recent_health_summary,
+recent_workouts
+}
+}
+
+AI workout generator:
+Inputs:
+
+* goal
+* level
+* days per week
+* workout location
+* equipment
+* time per session
+* injuries/limitations
+* preferred style
+
+Endpoint:
+POST /api/ai/workout-plan
+
+Output:
+
+* plan name
+* weekly schedule
+* exercises
+* sets/reps/rest
+* notes
+* safety disclaimer
+
+AI diet generator:
+Inputs:
+
+* goal
+* weight
+* height
+* age
+* diet preference
+* budget
+* Indian food preference
+* allergies
+* daily activity
+
+Endpoint:
+POST /api/ai/diet-plan
+
+Output:
+
+* calories target
+* protein target
+* meal plan
+* options
+* hydration
+* notes
+
+Food scan:
+
+* image picker/camera
+* preview image
+* send to backend
+* loading analysis
+* show estimated calories/macros
+* confidence note
+* save meal option
+
+Endpoint:
+POST /api/ai/food-scan
+
+Progress insight:
+Endpoint:
+POST /api/ai/progress-insight
+
+Daily tip:
+Endpoint:
+GET /api/ai/daily-tip
+
+AI safety:
+
+* Do not provide medical diagnosis.
+* Do not recommend unsafe supplements/drugs.
+* For injury, pregnancy, diabetes, heart disease, severe obesity, medical issues, advise professional consultation.
+* Keep tone motivating and practical.
+* Use Indian food context when diet is requested.
+
+====================================================
+NUTRITION FEATURES
+==================
+
+Nutrition screen:
+
+* daily calories consumed
+* target calories
+* protein/carbs/fat
+* meal list
+* add meal
+* food scan
+* AI diet plan
+* water tracker
+
+Meal log:
+Fields:
+
+* meal name
+* meal type: breakfast/lunch/snack/dinner
+* calories
+* protein
+* carbs
+* fat
+* notes
+* image optional
+
+Add meal workflow:
+
+1. User taps Add Meal.
+2. User enters meal details or scans food.
+3. App saves to backend.
+4. Nutrition summary updates.
+
+Water tracking:
+
+* daily water target
+* add 250ml
+* add 500ml
+* custom amount
+* progress bar
+
+Diet plan:
+
+* assigned by gym/trainer/AI
+* meals
+* calories/macros
+* compliance status
+* mark meal complete
+
+====================================================
+HEALTH TRACKING
+===============
+
+Health tab:
+
+* permission status
+* connect Apple Health / Health Connect
+* sync now
+* steps today
+* calories today
+* distance today
+* active minutes
+* workout sessions
+* weight
+* sleep if available
+* last synced time
+
+iOS:
+
+* Use HealthKit.
+* Request permissions:
+
+  * steps
+  * distance
+  * active energy burned
+  * workouts
+  * weight
+  * sleep if supported
+* Add iOS permission descriptions.
+* Handle simulator gracefully.
+* Show unavailable state if HealthKit not available.
+
+Android:
+
+* Use Health Connect.
+* Request permissions:
+
+  * steps
+  * distance
+  * calories
+  * exercise sessions
+  * weight
+  * sleep if supported
+* If Health Connect unavailable:
+
+  * show install/open Health Connect guidance
+  * do not crash
+
+Health sync workflow:
+
+1. User opens Health tab.
+2. App checks permission status.
+3. If not connected, show connect button.
+4. User grants permission.
+5. App reads today’s health data.
+6. App sends summary to backend.
+7. App stores last synced time.
+8. Dashboard updates.
+
+Health sync endpoint:
+POST /api/health/sync
+
+Payload:
+{
+date,
+steps,
+calories,
+distance,
+active_minutes,
+workouts,
+weight,
+sleep_minutes,
+source,
+synced_at
+}
+
+Health history:
+GET /api/health/history
+
+Important:
+Do not fake final health data.
+If emulator cannot test health tracking, mark real-device testing required.
+
+====================================================
+PROGRESS FEATURES
+=================
+
+Progress screen:
+
+* weight trend
+* steps trend
+* calories trend
+* workout streak
+* completed workouts
+* active minutes
+* AI progress insight
+
+Weight log:
+
+* add current weight
+* date
+* notes
+* trend chart
+
+Measurements optional:
+
+* chest
+* waist
+* arms
+* thighs
+* body fat percentage optional
+
+Progress insight:
+
+* send health/workout/weight summary to backend AI
+* show practical advice
+
+====================================================
+CHALLENGES / LEADERBOARD
+========================
+
+Challenges screen:
+
+* active challenges
+* upcoming challenges
+* completed challenges
+
+Challenge card:
+
+* title
+* description
+* goal
+* reward points
+* progress
+* join button
+* deadline
+
+Challenge types:
+
+* steps challenge
+* workout streak
+* calories burned
+* weight loss
+* referral challenge
+* gym attendance challenge
+
+Leaderboard:
+
+* rank
+* user name
+* points/progress
+* current user highlighted
+
+Join challenge workflow:
+
+1. User opens challenge.
+2. Taps Join.
+3. Backend creates participant record.
+4. Progress syncs from health/workout/referral data.
+
+====================================================
+REWARDS FEATURES
+================
+
+Rewards screen:
+
+* total points
+* badges
+* available rewards
+* reward history
+* earn more actions
+
+Earn points from:
+
+* workout completion
+* challenge completion
+* referrals
+* daily streak
+* health sync
+* subscription upgrade
+* gym attendance
+
+Reward card:
+
+* title
+* points needed
+* status
+* redeem button placeholder if redemption not active
+
+Do not fake successful redemption if backend/payment not ready.
+Show “Coming soon” or “Request redemption” safely.
+
+====================================================
+REFERRAL FEATURES
+=================
+
+Referral screen:
+
+* referral code
+* share link
+* invite friends
+* referral count
+* converted referrals
+* points earned
+* referral history
+
+Share workflow:
+
+1. App generates/refetches referral code.
+2. User taps share.
+3. Native share sheet opens.
+4. Referral link includes code.
+5. Backend tracks signup/conversion.
+
+Referral link example:
+[https://se7enfit.app/invite/{referralCode}](https://se7enfit.app/invite/{referralCode})
+
+If domain not ready:
+Use placeholder and document production domain setup.
+
+====================================================
+SUBSCRIPTION / PAYWALL
+======================
+
+Subscription screen:
+
+* current plan
+* free plan
+* premium plan
+* gym-connected plan if relevant
+* feature comparison
+* upgrade button
+* renewal/expiry date
+* payment status
+
+Plan examples:
+Free:
+
+* basic workouts
+* basic tracking
+* limited AI
+
+Premium:
+
+* unlimited AI trainer
+* advanced workout plans
+* advanced diet plans
+* food scan
+* progress insights
+* premium challenges
+
+Gym-connected:
+
+* assigned workouts
+* assigned diet
+* trainer/gym integration
+
+Important:
+If payment gateway is not configured, do not fake payment success.
+Show payment setup pending or integrate backend payment endpoint when available.
+
+====================================================
+PROFILE / SETTINGS
+==================
+
+Profile screen:
+
+* avatar
+* name
+* email
+* phone exactly 10 digits
+* goal
+* subscription status
+* edit profile
+* health connected status
+* referral code
+* logout
+
+Settings:
+
+* notification preferences
+* connected health
+* privacy
+* terms
+* support
+* delete account request placeholder
+* app version
+
+Edit profile:
+
+* name
+* phone
+* height
+* weight
+* goal
+* diet preference
+* injury notes
+* save to backend
+
+Logout:
+
+* call backend logout if available
+* clear SecureStore token
+* clear user store
+* route to welcome/login
+
+====================================================
+NOTIFICATIONS
+=============
+
+Notification screen:
+
+* workout reminders
+* water reminders
+* challenge updates
+* reward updates
+* gym messages
+* payment reminders
+* subscription alerts
+* AI tips
+
+Push notifications:
+
+* Ask permission properly.
+* Store Expo push token with backend if implemented.
+* If push backend not ready, do not crash.
+* Show local settings UI.
+
+====================================================
+GYM CONNECTION FEATURES
+=======================
+
+User can be linked to a gym.
+
+Gym-connected features:
+
+* assigned workout plan from gym owner
+* assigned diet plan from gym owner
+* trainer name
+* membership status
+* payment status
+* gym attendance
+* gym notifications
+* gym offers
+* referral connection
+
+Screens/sections:
+
+* My Gym card
+* assigned trainer
+* active membership
+* next payment due
+* gym announcements
+* assigned plans
+
+Backend must enforce:
+
+* user sees only their own gym connection
+* gym owner sees only own gym members
+* no cross-gym data leak
+
+====================================================
+API CLIENT REQUIREMENTS
+=======================
+
+Create central API client.
+
+Features:
+
+* base URL from env
+* Authorization header
+* timeout
+* JSON response parsing
+* handles non-JSON responses safely
+* handles 401
+* handles 403
+* handles 404
+* handles backend down
+* friendly error messages
+* no raw HTML error shown to user
+
+API client example behavior:
+
+* GET /api/auth/me
+* if 401 → logout
+* if network error → show “Server unreachable. Please try again.”
+* if API returns message → show message
+* if HTML received → show “Server returned an invalid response.”
+
+====================================================
+BACKEND ENDPOINTS APP EXPECTS
+=============================
+
+Auth:
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/google
+GET /api/auth/me
+POST /api/auth/logout
+
+User:
+GET /api/user/dashboard
+GET /api/user/profile
+PUT /api/user/profile
+GET /api/user/progress
+POST /api/user/progress/weight
+GET /api/user/referrals
+POST /api/user/referrals
+GET /api/user/rewards
+
+Health:
+POST /api/health/sync
+GET /api/health/today
+GET /api/health/history
+GET /api/health/status
+
+Workouts:
+GET /api/workouts
+GET /api/workouts/today
+GET /api/workouts/:id
+POST /api/workouts/:id/start
+POST /api/workouts/:id/complete
+POST /api/workouts/exercise/complete
+GET /api/exercises
+GET /api/exercises/:id
+GET /api/exercise-videos
+
+Nutrition:
+GET /api/diet
+POST /api/diet/meal-log
+GET /api/diet/meal-log
+POST /api/diet/water
+GET /api/diet/water/today
+
+AI:
+POST /api/ai/chat
+POST /api/ai/workout-plan
+POST /api/ai/diet-plan
+POST /api/ai/food-scan
+POST /api/ai/progress-insight
+GET /api/ai/daily-tip
+
+Challenges:
+GET /api/challenges
+GET /api/challenges/:id
+POST /api/challenges/:id/join
+GET /api/challenges/:id/leaderboard
+
+Rewards:
+GET /api/rewards
+GET /api/rewards/history
+POST /api/rewards/redeem
+
+Referrals:
+GET /api/referrals
+POST /api/referrals/share
+GET /api/referrals/stats
+
+Subscriptions:
+GET /api/subscriptions/current
+GET /api/subscriptions/plans
+POST /api/subscriptions/checkout
+
+Notifications:
+GET /api/notifications
+PUT /api/notifications/:id/read
+POST /api/notifications/register-device
+
+If endpoint is missing:
+
+* show safe empty state
+* do not crash
+* document endpoint required
+
+====================================================
+TiDB DATA MODEL EXPECTATIONS
+============================
+
+The backend database is TiDB. The app does not connect directly to TiDB.
+
+Expected backend models:
+
+* users
+* user_profiles
+* gym_profiles
+* gym_members
+* workout_plans
+* workout_exercises
+* assigned_workout_plans
+* diet_plans
+* assigned_diet_plans
+* exercise_library
+* exercise_videos
+* workout_sessions
+* meal_logs
+* water_logs
+* weight_logs
+* health_daily_summaries
+* health_sync_logs
+* challenges
+* challenge_participants
+* rewards
+* referrals
+* subscriptions
+* notifications
+* ai_chat_logs
+* ai_generation_logs
+
+Mobile app must assume all sensitive data is backend-mediated.
+
+====================================================
+ANDROID REQUIREMENTS
+====================
+
+Android config:
+
+* package: com.se7enfit.app
+* adaptive icon
+* splash screen
+* Google Sign-In config
+* Health Connect permissions
+* internet permission
+* camera/media permissions if food scan implemented
+* notification permission for Android 13+
+* release build readiness
+
+Android manual testing:
+
+* Google login on real device
+* Health Connect permission flow
+* food scan image picker/camera
+* push notification permission
+* APK/AAB build
+
+====================================================
+iOS REQUIREMENTS
+================
+
+iOS config:
+
+* bundle identifier should be SE7EN FIT appropriate
+* app icon
+* splash screen
+* Google Sign-In URL scheme
+* HealthKit capability instructions
+* camera/photo permissions
+* notification permissions
+* Info.plist descriptions
+* release build readiness
+
+iOS manual testing:
+
+* Google login on real iPhone
+* Apple HealthKit permission flow
+* food scan camera/gallery
+* push notification permission
+* IPA/TestFlight build
+
+====================================================
+EAS BUILD REQUIREMENTS
+======================
+
+Prepare for EAS Build.
+
+Files/config:
+
+* app.json or app.config.ts
+* eas.json
+* Android package config
+* iOS bundle config
+* icon/splash paths
+* env documentation
+
+Build profiles:
+
+* development
+* preview
+* production
+
+Document commands:
+
+* npm install
+* npx expo start
+* npx expo doctor
+* eas build -p android --profile preview
+* eas build -p android --profile production
+* eas build -p ios --profile production
+
+====================================================
+ERROR HANDLING
+==============
+
+Every screen must handle:
+
+* loading
+* empty data
+* network error
+* unauthorized
+* backend down
+* invalid response
+* permission denied
+* feature not configured
+* offline state
+
+No screen should crash if:
+
+* user is null
+* token expired
+* API returns empty array
+* video URL missing
+* health permission denied
+* Gemini endpoint down
+* backend sends 404
+* no internet connection
+
+====================================================
+TESTING CHECKLIST
+=================
+
+Run as much as possible:
+
+* install dependencies
+* start Expo
+* lint/typecheck if available
+* check route navigation
+* check auth screens
+* check form validation
+* check phone input 10 digits
+* check dashboard empty states
+* check workout screens
+* check exercise/video guide
+* check AI Coach loading/error
+* check nutrition screens
+* check health permission UI
+* check profile edit
+* check logout
+* check Android readiness
+* check iOS readiness
+
+Manual real-device tests required:
+
+* Android Google login
+* iOS Google login
+* Android Health Connect
+* iOS HealthKit
+* camera/food scan
+* push notifications
+* production EAS build
+
+====================================================
+FINAL OUTPUT FORMAT
+===================
+
+After building, respond with:
+
+1. What was created
+2. Full app folder structure
+3. Screens built
+4. Components built
+5. Services built
+6. Auth workflow status
+7. Google login status
+8. HealthKit/Health Connect status
+9. Gemini AI status
+10. Workout video guide status
+11. Backend endpoints used
+12. Backend endpoints still needed
+13. Environment variables required
+14. Commands to run
+15. Android build steps
+16. iOS build steps
+17. Manual testing checklist
+18. Known limitations
+19. Next recommended steps
+
+Start now by creating the fresh React Native / Expo SE7EN FIT mobile app. Build the actual files. Do not only give a plan.
+
+This is the app-only version. It still includes backend/API/DB expectations because the mobile app cannot be truly functional without knowing what it must connect to.

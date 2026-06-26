@@ -1,0 +1,1 @@
+- [SE7ENFIT mobile stack](se7enfit-mobile.md) — Expo v53 + expo-router v6; brand #20c55d green, #050505 bg; SecureStore JWT; backend se7enfit-original.onrender.com

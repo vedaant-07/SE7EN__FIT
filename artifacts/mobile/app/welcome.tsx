@@ -2,206 +2,107 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React from "react";
-import {
-  Platform,
-  Pressable,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/context/AuthContext";
+
+const G = "#20c55d";
+const BG = "#050505";
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { setRole } = useAuth();
-
-  function handleUser() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setRole("user");
-    router.push("/auth/login");
-  }
-
-  function handleGymOwner() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setRole("gym_owner");
-    router.push("/auth/login");
-  }
-
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  return (
-    <View style={[styles.container, { paddingTop: topPad + 20 }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+  function goLogin() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/auth/login");
+  }
+  function goRegister() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/auth/register");
+  }
 
-      <View style={styles.hero}>
-        <View style={styles.logoWrap}>
-          <Feather name="zap" size={36} color="#000" />
+  return (
+    <View style={[s.root, { paddingTop: topPad + 24 }]}>
+      <StatusBar barStyle="light-content" backgroundColor={BG} />
+
+      <View style={s.hero}>
+        <View style={s.logoWrap}>
+          <Feather name="zap" size={38} color="#000" />
         </View>
-        <Text style={styles.brand}>
-          SE<Text style={styles.brandAccent}>7</Text>ENFIT
-        </Text>
-        <Text style={styles.tagline}>India's #1 AI Fitness App</Text>
+        <Text style={s.brand}>SE<Text style={s.brandGreen}>7</Text>ENFIT</Text>
+        <Text style={s.tagline}>India's #1 AI Fitness App</Text>
       </View>
 
-      <View style={styles.headline}>
-        <Text style={styles.h1}>
-          Transform Your{" "}
-          <Text style={styles.h1Accent}>Body & Mind</Text>
-        </Text>
-        <Text style={styles.sub}>
+      <View style={s.pitch}>
+        <Text style={s.h1}>Transform Your{"\n"}<Text style={s.h1Green}>Body & Mind</Text></Text>
+        <Text style={s.sub}>
           AI-powered workouts, nutrition tracking,{"\n"}
           challenges & rewards — all in one app.
         </Text>
       </View>
 
-      <View style={[styles.actions, { paddingBottom: insets.bottom + 40 }]}>
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.btnUser, pressed && styles.btnPressed]}
-          onPress={handleUser}
-        >
-          <View style={styles.btnLeft}>
-            <Feather name="activity" size={20} color="#000" />
-          </View>
-          <View style={styles.btnText}>
-            <Text style={styles.btnTitle}>Continue as User</Text>
-            <Text style={styles.btnSub}>Track fitness, nutrition & more</Text>
+      <View style={[s.actions, { paddingBottom: insets.bottom + 40 }]}>
+        <Pressable style={({ pressed }) => [s.btn, s.btnGreen, pressed && s.pressed]} onPress={goLogin}>
+          <View style={s.btnIcon}><Feather name="log-in" size={18} color="#000" /></View>
+          <View style={s.btnTexts}>
+            <Text style={s.btnTitle}>Login</Text>
+            <Text style={s.btnSub}>Access your fitness account</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#000" />
         </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.btnGym, pressed && styles.btnPressed]}
-          onPress={handleGymOwner}
-        >
-          <View style={styles.btnLeft}>
-            <Feather name="users" size={20} color="#22C55E" />
+        <Pressable style={({ pressed }) => [s.btn, s.btnDark, pressed && s.pressed]} onPress={goRegister}>
+          <View style={[s.btnIcon, { backgroundColor: G + "20" }]}>
+            <Feather name="user-plus" size={18} color={G} />
           </View>
-          <View style={styles.btnText}>
-            <Text style={[styles.btnTitle, { color: "#FFF" }]}>Continue as Gym Owner</Text>
-            <Text style={[styles.btnSub, { color: "#6B7280" }]}>Manage members, leads & earnings</Text>
+          <View style={s.btnTexts}>
+            <Text style={[s.btnTitle, { color: "#fff" }]}>Create Account</Text>
+            <Text style={[s.btnSub, { color: "#6b7280" }]}>Start your fitness journey</Text>
           </View>
-          <Feather name="chevron-right" size={20} color="#6B7280" />
+          <Feather name="chevron-right" size={20} color="#6b7280" />
         </Pressable>
 
-        <Text style={styles.legal}>
+        <Text style={s.legal}>
           By continuing, you agree to our{" "}
-          <Text style={styles.link}>Terms</Text>
-          {" "}and{" "}
-          <Text style={styles.link}>Privacy Policy</Text>.
+          <Text style={s.legalLink}>Terms</Text> and{" "}
+          <Text style={s.legalLink}>Privacy Policy</Text>.
         </Text>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    paddingHorizontal: 24,
-    justifyContent: "space-between",
-  },
-  hero: {
-    alignItems: "center",
-    gap: 8,
-  },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG, paddingHorizontal: 24, justifyContent: "space-between" },
+  hero: { alignItems: "center", gap: 10 },
   logoWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: "#22C55E",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
+    width: 80, height: 80, borderRadius: 22,
+    backgroundColor: G, alignItems: "center", justifyContent: "center",
+    shadowColor: G, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 8 },
   },
-  brand: {
-    fontSize: 32,
-    fontWeight: "900" as const,
-    color: "#FFF",
-    letterSpacing: 2,
-  },
-  brandAccent: {
-    color: "#22C55E",
-  },
-  tagline: {
-    fontSize: 14,
-    color: "#6B7280",
-    letterSpacing: 0.5,
-  },
-  headline: {
-    alignItems: "center",
-    gap: 12,
-  },
-  h1: {
-    fontSize: 30,
-    fontWeight: "800" as const,
-    color: "#FFF",
-    textAlign: "center",
-    lineHeight: 38,
-  },
-  h1Accent: {
-    color: "#22C55E",
-  },
-  sub: {
-    fontSize: 15,
-    color: "#9CA3AF",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  actions: {
-    gap: 12,
-  },
+  brand: { fontSize: 34, fontWeight: "900", color: "#fff", letterSpacing: 2 },
+  brandGreen: { color: G },
+  tagline: { fontSize: 13, color: "#6b7280", letterSpacing: 0.5 },
+  pitch: { alignItems: "center", gap: 14 },
+  h1: { fontSize: 32, fontWeight: "800", color: "#fff", textAlign: "center", lineHeight: 42 },
+  h1Green: { color: G },
+  sub: { fontSize: 15, color: "#9ca3af", textAlign: "center", lineHeight: 23 },
+  actions: { gap: 12 },
   btn: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    gap: 14,
+    flexDirection: "row", alignItems: "center", borderRadius: 16,
+    paddingHorizontal: 20, paddingVertical: 18, gap: 14,
   },
-  btnUser: {
-    backgroundColor: "#22C55E",
+  btnGreen: { backgroundColor: G },
+  btnDark: { backgroundColor: "#0d0d0d", borderWidth: 1, borderColor: "#1e1e1e" },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  btnIcon: {
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center",
   },
-  btnGym: {
-    backgroundColor: "#141414",
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  btnPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  btnLeft: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnText: {
-    flex: 1,
-    gap: 2,
-  },
-  btnTitle: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: "#000",
-  },
-  btnSub: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.6)",
-  },
-  legal: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 8,
-  },
-  link: {
-    color: "#22C55E",
-  },
+  btnTexts: { flex: 1, gap: 2 },
+  btnTitle: { fontSize: 16, fontWeight: "700", color: "#000" },
+  btnSub: { fontSize: 12, color: "rgba(0,0,0,0.55)" },
+  legal: { textAlign: "center", fontSize: 12, color: "#4b5563", marginTop: 6 },
+  legalLink: { color: G },
 });

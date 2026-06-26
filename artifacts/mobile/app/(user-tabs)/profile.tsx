@@ -1,40 +1,61 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  Alert, Platform, Pressable, RefreshControl,
+  ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
+import { getProfile } from "@/src/services/userService";
+import type { User } from "@/src/types";
 
-const ACHIEVEMENTS = [
-  { id: "1", name: "First Workout", icon: "zap" as const, color: "#22C55E", earned: true },
-  { id: "2", name: "Week Streak", icon: "activity" as const, color: "#3B82F6", earned: true },
-  { id: "3", name: "Calorie Crusher", icon: "target" as const, color: "#EF4444", earned: true },
-  { id: "4", name: "Hydration Hero", icon: "droplet" as const, color: "#06B6D4", earned: false },
-  { id: "5", name: "Nutrition Pro", icon: "coffee" as const, color: "#F97316", earned: false },
-  { id: "6", name: "30 Day Warrior", icon: "award" as const, color: "#8B5CF6", earned: false },
+const G = "#20c55d";
+const BG = "#050505";
+const CARD = "#0d0d0d";
+const BORDER = "#1e1e1e";
+
+const BADGES = [
+  { id: "1", name: "First Workout", icon: "zap" as const, color: G, earned: true },
+  { id: "2", name: "Week Streak", icon: "activity" as const, color: "#38bdf8", earned: true },
+  { id: "3", name: "Calorie Crusher", icon: "target" as const, color: "#f87171", earned: true },
+  { id: "4", name: "Hydration Hero", icon: "droplet" as const, color: "#38bdf8", earned: false },
+  { id: "5", name: "Nutrition Pro", icon: "coffee" as const, color: "#fb923c", earned: false },
+  { id: "6", name: "30-Day Warrior", icon: "award" as const, color: "#a78bfa", earned: false },
 ];
 
-const SETTINGS = [
-  { id: "goal", label: "Fitness Goal", value: "Build Muscle", icon: "target" as const },
-  { id: "level", label: "Fitness Level", value: "Intermediate", icon: "trending-up" as const },
-  { id: "notifications", label: "Notifications", value: "On", icon: "bell" as const },
-  { id: "units", label: "Units", value: "Metric (kg/cm)", icon: "sliders" as const },
+const MENU_ITEMS = [
+  { id: "subscription", label: "Subscription", icon: "zap" as const, value: "Free", color: "#fbbf24" },
+  { id: "referral", label: "Refer & Earn", icon: "gift" as const, value: "Invite Friends", color: G },
+  { id: "notifications", label: "Notifications", icon: "bell" as const, value: "", color: "#9ca3af" },
+  { id: "health", label: "Connected Health", icon: "heart" as const, value: "Not connected", color: "#f87171" },
+  { id: "settings", label: "Settings", icon: "settings" as const, value: "", color: "#9ca3af" },
+  { id: "privacy", label: "Privacy Policy", icon: "shield" as const, value: "", color: "#9ca3af" },
+  { id: "support", label: "Help & Support", icon: "help-circle" as const, value: "", color: "#9ca3af" },
 ];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
-  const [planType] = useState("PRIME");
-
+  const { user: authUser, logout, refreshUser } = useAuth();
+  const [profile, setProfile] = useState<User | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const user = profile ?? authUser;
+  const firstName = user?.name?.split(" ")[0] ?? "User";
+
+  async function load(isRefresh = false) {
+    try {
+      const p = await getProfile();
+      setProfile(p);
+    } catch {
+      // fallback to auth user
+    } finally {
+      if (isRefresh) setRefreshing(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   function handleLogout() {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -43,272 +64,201 @@ export default function ProfileScreen() {
         text: "Log Out", style: "destructive", onPress: async () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           await logout();
-        }
+        },
       },
     ]);
   }
 
+  const subStatus = user?.subscription_status ?? "free";
+  const isPrime = subStatus === "premium" || subStatus === "gym_connected";
+
   return (
     <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.container, { paddingTop: topPad + 16, paddingBottom: (Platform.OS === "web" ? 34 : 0) + 100 }]}
+      style={{ flex: 1, backgroundColor: BG }}
+      contentContainerStyle={[s.container, { paddingTop: topPad + 16, paddingBottom: 100 + (Platform.OS === "web" ? 34 : 0) }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={G} />
+      }
     >
-      {/* Profile Header */}
-      <View style={styles.profileCard}>
-        <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? "U"}</Text>
+      {/* Profile Card */}
+      <View style={s.profileCard}>
+        <View style={s.avatarWrap}>
+          <Text style={s.avatarText}>{firstName[0]?.toUpperCase()}</Text>
         </View>
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{user?.name ?? "User"}</Text>
-          <Text style={styles.profileEmail}>{user?.email ?? ""}</Text>
-          <View style={styles.planBadge}>
-            <Feather name="zap" size={10} color="#F59E0B" />
-            <Text style={styles.planBadgeText}>{planType} Member</Text>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Text style={s.profileName}>{user?.name ?? "User"}</Text>
+          <Text style={s.profileEmail}>{user?.email ?? ""}</Text>
+          {user?.phone && <Text style={s.profilePhone}>+91 {user.phone}</Text>}
+          <View style={[s.planBadge, isPrime ? s.planBadgePrime : s.planBadgeFree]}>
+            <Feather name="zap" size={10} color={isPrime ? "#fbbf24" : "#6b7280"} />
+            <Text style={[s.planText, isPrime ? { color: "#fbbf24" } : { color: "#6b7280" }]}>
+              {isPrime ? "PRIME Member" : "Free Plan"}
+            </Text>
           </View>
         </View>
-        <Pressable style={styles.editBtn}>
-          <Feather name="edit-2" size={16} color="#6B7280" />
+        <Pressable style={s.editBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+          <Feather name="edit-2" size={16} color="#9ca3af" />
         </Pressable>
       </View>
 
       {/* Stats */}
-      <View style={styles.statsRow}>
+      <View style={s.statsRow}>
         {[
-          { label: "Workouts", value: "24" },
-          { label: "Streak", value: "7d" },
-          { label: "Points", value: "3.4K" },
-        ].map(s => (
-          <View key={s.label} style={styles.statItem}>
-            <Text style={styles.statVal}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
+          { label: "Workouts", value: "—" },
+          { label: "Streak", value: "—d" },
+          { label: "Points", value: "—" },
+        ].map((s2, i) => (
+          <View key={s2.label} style={[s.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: BORDER }]}>
+            <Text style={s.statVal}>{s2.value}</Text>
+            <Text style={s.statLbl}>{s2.label}</Text>
           </View>
         ))}
       </View>
 
-      {/* Body Stats */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Body Stats</Text>
-        <View style={styles.bodyGrid}>
-          {[
-            { label: "Weight", value: "72 kg" },
-            { label: "Height", value: "175 cm" },
-            { label: "BMI", value: "23.5" },
-            { label: "Body Fat", value: "18%" },
-          ].map(b => (
-            <View key={b.label} style={styles.bodyCard}>
-              <Text style={styles.bodyVal}>{b.value}</Text>
-              <Text style={styles.bodyLabel}>{b.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Achievements */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Achievements</Text>
-          <Text style={styles.achieveCount}>{ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length}</Text>
-        </View>
-        <View style={styles.achieveGrid}>
-          {ACHIEVEMENTS.map(a => (
-            <View key={a.id} style={[styles.achieveItem, !a.earned && styles.achieveItemLocked]}>
-              <View style={[styles.achieveIcon, { backgroundColor: a.earned ? a.color + "20" : "#1A1A1A" }]}>
-                <Feather name={a.icon} size={20} color={a.earned ? a.color : "#3F3F3F"} />
+      {/* Body Info */}
+      {(user?.height || user?.weight || user?.goal) && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Body Stats</Text>
+          <View style={s.bodyGrid}>
+            {[
+              { label: "Weight", value: user?.weight ? `${user.weight} kg` : "—" },
+              { label: "Height", value: user?.height ? `${user.height} cm` : "—" },
+              { label: "Goal", value: user?.goal ?? "—" },
+              { label: "Diet", value: user?.diet_preference ?? "—" },
+            ].map(b => (
+              <View key={b.label} style={s.bodyCard}>
+                <Text style={s.bodyVal}>{b.value}</Text>
+                <Text style={s.bodyLbl}>{b.label}</Text>
               </View>
-              <Text style={[styles.achieveName, !a.earned && { color: "#3F3F3F" }]} numberOfLines={2}>
-                {a.name}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        <View style={styles.settingsCard}>
-          {SETTINGS.map((s, i) => (
-            <Pressable
-              key={s.id}
-              style={[styles.settingRow, i < SETTINGS.length - 1 && styles.settingRowBorder]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            >
-              <View style={styles.settingLeft}>
-                <Feather name={s.icon} size={16} color="#6B7280" />
-                <Text style={styles.settingLabel}>{s.label}</Text>
-              </View>
-              <View style={styles.settingRight}>
-                <Text style={styles.settingValue}>{s.value}</Text>
-                <Feather name="chevron-right" size={14} color="#3F3F3F" />
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* Upgrade Banner */}
-      <View style={styles.upgradeBanner}>
-        <View style={styles.upgradeLeft}>
-          <Feather name="zap" size={20} color="#F59E0B" />
-          <View>
-            <Text style={styles.upgradeTitle}>Upgrade to PRIME</Text>
-            <Text style={styles.upgradeSub}>Unlock AI coaching & advanced analytics</Text>
+            ))}
           </View>
         </View>
-        <Pressable style={styles.upgradeBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
-          <Text style={styles.upgradeBtnText}>Upgrade</Text>
-        </Pressable>
+      )}
+
+      {/* Badges */}
+      <View style={s.section}>
+        <View style={s.sectionRow}>
+          <Text style={s.sectionTitle}>Badges</Text>
+          <Text style={s.badgeCount}>{BADGES.filter(b => b.earned).length}/{BADGES.length} earned</Text>
+        </View>
+        <View style={s.badgeGrid}>
+          {BADGES.map(b => (
+            <View key={b.id} style={[s.badgeItem, !b.earned && s.badgeDim]}>
+              <View style={[s.badgeIcon, { backgroundColor: b.earned ? b.color + "20" : "#1a1a1a" }]}>
+                <Feather name={b.icon} size={20} color={b.earned ? b.color : "#2a2a2a"} />
+              </View>
+              <Text style={[s.badgeName, !b.earned && { color: "#2a2a2a" }]} numberOfLines={2}>{b.name}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
+      {/* Referral Code */}
+      {user?.referral_code && (
+        <View style={s.referralCard}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={s.referralTitle}>Your Referral Code</Text>
+            <Text style={s.referralCode}>{user.referral_code}</Text>
+            <Text style={s.referralSub}>Invite friends and earn points</Text>
+          </View>
+          <Pressable style={s.shareBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+            <Feather name="share-2" size={16} color="#000" />
+          </Pressable>
+        </View>
+      )}
+
+      {/* Menu */}
+      <View style={s.menuCard}>
+        {MENU_ITEMS.map((item, i) => (
+          <Pressable
+            key={item.id}
+            style={[s.menuRow, i < MENU_ITEMS.length - 1 && { borderBottomWidth: 1, borderBottomColor: "#111" }]}
+            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+          >
+            <View style={[s.menuIcon, { backgroundColor: item.color + "15" }]}>
+              <Feather name={item.icon} size={16} color={item.color} />
+            </View>
+            <Text style={s.menuLabel}>{item.label}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {item.value ? <Text style={s.menuValue}>{item.value}</Text> : null}
+              <Feather name="chevron-right" size={14} color="#374151" />
+            </View>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Upgrade */}
+      {!isPrime && (
+        <View style={s.upgradeCard}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Feather name="zap" size={18} color="#fbbf24" />
+            <Text style={s.upgradeTitle}>Unlock SE7ENFIT PRIME</Text>
+          </View>
+          <Text style={s.upgradeSub}>Unlimited AI coach, advanced workout plans, food scan & more</Text>
+          <Pressable style={s.upgradeBtn} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+            <Text style={s.upgradeBtnText}>Upgrade to PRIME →</Text>
+          </Pressable>
+        </View>
+      )}
+
       {/* Logout */}
-      <Pressable
-        style={styles.logoutBtn}
-        onPress={handleLogout}
-      >
-        <Feather name="log-out" size={18} color="#EF4444" />
-        <Text style={styles.logoutText}>Log Out</Text>
+      <Pressable style={s.logoutBtn} onPress={handleLogout}>
+        <Feather name="log-out" size={18} color="#f87171" />
+        <Text style={s.logoutText}>Log Out</Text>
       </Pressable>
+
+      <Text style={s.versionText}>SE7ENFIT v1.0.0 · Build for India 🇮🇳</Text>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#0A0A0A" },
+const s = StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 20 },
-  profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "#141414",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  avatarWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#22C55E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { fontSize: 26, fontWeight: "800" as const, color: "#000" },
-  profileInfo: { flex: 1, gap: 4 },
-  profileName: { fontSize: 18, fontWeight: "700" as const, color: "#FFF" },
-  profileEmail: { fontSize: 13, color: "#6B7280" },
-  planBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F59E0B15",
-    borderRadius: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    alignSelf: "flex-start",
-  },
-  planBadgeText: { fontSize: 10, color: "#F59E0B", fontWeight: "700" as const },
+  profileCard: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: CARD, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: BORDER },
+  avatarWrap: { width: 68, height: 68, borderRadius: 34, backgroundColor: G, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 28, fontWeight: "800", color: "#000" },
+  profileName: { fontSize: 18, fontWeight: "700", color: "#fff" },
+  profileEmail: { fontSize: 12, color: "#6b7280" },
+  profilePhone: { fontSize: 12, color: "#6b7280" },
+  planBadge: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
+  planBadgePrime: { backgroundColor: "#fbbf2415" },
+  planBadgeFree: { backgroundColor: "#1e1e1e" },
+  planText: { fontSize: 10, fontWeight: "700" },
   editBtn: { padding: 8 },
-
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#262626",
-    overflow: "hidden",
-  },
-  statItem: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderRightWidth: 1,
-    borderRightColor: "#262626",
-  },
-  statVal: { fontSize: 20, fontWeight: "800" as const, color: "#22C55E" },
-  statLabel: { fontSize: 11, color: "#6B7280", marginTop: 2 },
-
+  statsRow: { flexDirection: "row", backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, overflow: "hidden" },
+  statItem: { flex: 1, paddingVertical: 16, alignItems: "center" },
+  statVal: { fontSize: 20, fontWeight: "800", color: G },
+  statLbl: { fontSize: 11, color: "#6b7280", marginTop: 2 },
   section: { gap: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700" as const, color: "#FFF" },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  achieveCount: { fontSize: 13, color: "#22C55E" },
-
+  sectionTitle: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  badgeCount: { fontSize: 13, color: G },
   bodyGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  bodyCard: {
-    flex: 1,
-    minWidth: "44%",
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    padding: 14,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  bodyVal: { fontSize: 18, fontWeight: "700" as const, color: "#22C55E" },
-  bodyLabel: { fontSize: 12, color: "#6B7280" },
-
-  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  achieveItem: {
-    width: "30%",
-    alignItems: "center",
-    gap: 6,
-  },
-  achieveItemLocked: { opacity: 0.5 },
-  achieveIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  achieveName: { fontSize: 10, color: "#D1D5DB", textAlign: "center", lineHeight: 13 },
-
-  settingsCard: {
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#262626",
-    overflow: "hidden",
-  },
-  settingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14 },
-  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: "#1F1F1F" },
-  settingLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  settingLabel: { fontSize: 14, color: "#FFF" },
-  settingRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  settingValue: { fontSize: 13, color: "#6B7280" },
-
-  upgradeBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#1A130A",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#F59E0B20",
-  },
-  upgradeLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  upgradeTitle: { fontSize: 14, fontWeight: "700" as const, color: "#FFF" },
-  upgradeSub: { fontSize: 11, color: "#6B7280", marginTop: 2 },
-  upgradeBtn: {
-    backgroundColor: "#F59E0B",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  upgradeBtnText: { fontSize: 13, fontWeight: "700" as const, color: "#000" },
-
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#EF444415",
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "#EF444420",
-  },
-  logoutText: { fontSize: 15, color: "#EF4444", fontWeight: "600" as const },
+  bodyCard: { flex: 1, minWidth: "44%", backgroundColor: CARD, borderRadius: 12, padding: 14, gap: 4, borderWidth: 1, borderColor: BORDER },
+  bodyVal: { fontSize: 17, fontWeight: "700", color: G },
+  bodyLbl: { fontSize: 12, color: "#6b7280" },
+  badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  badgeItem: { width: "30%", alignItems: "center", gap: 6 },
+  badgeDim: { opacity: 0.4 },
+  badgeIcon: { width: 54, height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  badgeName: { fontSize: 10, color: "#d1d5db", textAlign: "center", lineHeight: 14 },
+  referralCard: { flexDirection: "row", alignItems: "center", backgroundColor: G + "10", borderRadius: 14, padding: 16, gap: 12, borderWidth: 1, borderColor: G + "30" },
+  referralTitle: { fontSize: 12, color: "#9ca3af" },
+  referralCode: { fontSize: 22, fontWeight: "900", color: G, letterSpacing: 2 },
+  referralSub: { fontSize: 11, color: "#6b7280" },
+  shareBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: G, alignItems: "center", justifyContent: "center" },
+  menuCard: { backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: "hidden" },
+  menuRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  menuIcon: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  menuLabel: { flex: 1, fontSize: 14, color: "#fff" },
+  menuValue: { fontSize: 12, color: "#6b7280" },
+  upgradeCard: { backgroundColor: "#1a1200", borderRadius: 16, padding: 18, gap: 10, borderWidth: 1, borderColor: "#fbbf2420" },
+  upgradeTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  upgradeSub: { fontSize: 13, color: "#9ca3af", lineHeight: 19 },
+  upgradeBtn: { backgroundColor: "#fbbf24", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  upgradeBtnText: { fontSize: 14, fontWeight: "700", color: "#000" },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#f8717115", borderRadius: 12, paddingVertical: 14, borderWidth: 1, borderColor: "#f8717120" },
+  logoutText: { fontSize: 15, color: "#f87171", fontWeight: "600" },
+  versionText: { textAlign: "center", fontSize: 11, color: "#374151" },
 });

@@ -1,45 +1,76 @@
-# [Project name]
+# SE7ENFIT — India's #1 AI Fitness App
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A full-stack mobile fitness app built with Expo React Native, connecting to the SE7ENFIT production backend. Users get AI-powered workouts, nutrition tracking, health data sync, challenges, rewards, referrals, and subscription management.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/mobile run dev` — run the Expo mobile app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Mobile: Expo (React Native), expo-router v6, expo-secure-store (JWT storage)
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+
+## Backend
+
+- Production: `https://se7enfit-original.onrender.com`
+- API base path: `/api`
+- JWT auth: stored in SecureStore (`se7enfit_token`)
+- All requests go through `src/services/apiClient.ts`
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mobile/` — Expo React Native app
+  - `app/` — expo-router screens
+  - `app/(user-tabs)/` — 5 tab screens: Home, Workout, AI Coach, Health, Profile
+  - `app/(gym-tabs)/` — Gym owner tabs
+  - `src/services/` — API service layer (apiClient, authService, workoutService, aiService, nutritionService, userService)
+  - `src/types/index.ts` — shared TypeScript types
+  - `src/config/constants.ts` — API_BASE_URL and other config
+  - `context/AuthContext.tsx` — auth state + SecureStore JWT
+- `artifacts/api-server/` — Express API server (local, for future)
+
+## Brand
+
+- Primary green: `#20c55d`
+- Background: `#050505`
+- Card: `#0d0d0d`
+- Border: `#1e1e1e`
+- Muted text: `#9ca3af`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- JWT stored in expo-secure-store (not AsyncStorage) for security
+- All API calls proxy through apiClient.ts with 15s timeout + 401 auto-logout
+- Tab files: index=Home, workouts=Workout, nutrition=AI Coach, challenges=Health, profile=Profile
+- Gym owners see `(gym-tabs)` instead of `(user-tabs)`
+- Services return empty arrays on 404/error (never crash the UI)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Welcome screen → Login / Register (with phone number, 10 digits)
+- Home dashboard: daily stats, AI tip, today's workout, water tracker
+- Workout tab: AI workout plans + exercise library
+- AI Coach tab: real-time Gemini-powered fitness chat
+- Health tab: Apple Health / Health Connect integration
+- Profile: badges, body stats, referral code, subscription management
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Brand color is #20c55d (green), NOT #22C55E
+- Background is #050505 (near black), card is #0d0d0d
+- Phone number input: 10 digits only, digits only enforced
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- expo-secure-store version must be ~15.0.8 (expo v53 compatible)
+- expo-video version mismatch warning can be ignored (not actively used)
+- Web preview works but SecureStore may not persist across browser sessions (works fine on device)
+- Backend at se7enfit-original.onrender.com may be slow to wake up (cold start)
